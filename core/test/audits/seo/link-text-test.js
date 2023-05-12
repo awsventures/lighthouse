@@ -13,6 +13,8 @@ describe('SEO: link text audit', () => {
     const invalidLink = {href: 'https://example.com/otherpage.html', text: 'click here', rel: '', textLang: 'en'};
     const invalidLinkDe = {href: 'https://example.com/otherpage.html', text: 'klicke hier', rel: '', textLang: 'de'};
     const invalidLinkEs = {href: 'https://example.com/otherpage.html', text: 'click aquí', rel: '', textLang: 'es'};
+    const invalidLinkEnUs = {href: 'https://example.com/otherpage.html', text: 'click here', rel: '', textLang: 'en-US'};
+    const invalidLinkDeDe = {href: 'https://example.com/otherpage.html', text: 'klicke hier', rel: '', textLang: 'de-DE'};
     const artifacts = {
       URL: {
         finalDisplayedUrl: 'https://example.com/page.html',
@@ -24,18 +26,24 @@ describe('SEO: link text audit', () => {
         invalidLinkEs,
         {href: 'https://example.com/otherpage.html', text: 'legit link text', rel: '', textLang: 'en'},
         {href: 'https://example.com/otherpage.html', text: 'legitimer Link-Text', rel: '', textLang: 'de'},
+        invalidLinkEnUs,
+        invalidLinkDeDe,
       ],
     };
 
     const auditResult = LinkTextAudit.audit(artifacts);
     assert.equal(auditResult.score, 0);
-    assert.equal(auditResult.details.items.length, 3);
+    assert.equal(auditResult.details.items.length, 5);
     assert.equal(auditResult.details.items[0].href, invalidLink.href);
     assert.equal(auditResult.details.items[0].text, invalidLink.text);
     assert.equal(auditResult.details.items[1].href, invalidLinkDe.href);
     assert.equal(auditResult.details.items[1].text, invalidLinkDe.text);
     assert.equal(auditResult.details.items[2].href, invalidLinkEs.href);
     assert.equal(auditResult.details.items[2].text, invalidLinkEs.text);
+    assert.equal(auditResult.details.items[3].href, invalidLinkEnUs.href);
+    assert.equal(auditResult.details.items[3].text, invalidLinkEnUs.text);
+    assert.equal(auditResult.details.items[4].href, invalidLinkDeDe.href);
+    assert.equal(auditResult.details.items[4].text, invalidLinkDeDe.text);
   });
 
   it('ignores non descriptive link texts with unknown language', () => {
