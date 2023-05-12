@@ -98,12 +98,14 @@ function collectAnchorElements() {
   /** @type {Array<HTMLElement|SVGElement>} */
   // @ts-expect-error - put into scope via stringification
   const langElements = getElementsInDocument('body[lang], body [lang]'); // eslint-disable-line no-undef
+  const documentHasNoLang = !document.documentElement.lang && langElements.length === 0;
   const canFallbackToBodyLang = (langElements.length === 1) &&
     langElements[0].nodeName === 'BODY';
   const canFallbackToHtmlLang = !canFallbackToBodyLang && (langElements.length === 0) &&
     document.documentElement.lang;
-  const lang = canFallbackToBodyLang ? langElements[0].getAttribute('lang') :
-    (canFallbackToHtmlLang ? document.documentElement.lang : null);
+  const lang = documentHasNoLang ? '' :
+    (canFallbackToBodyLang ? langElements[0].getAttribute('lang') :
+    (canFallbackToHtmlLang ? document.documentElement.lang : null));
 
   return anchorElements.map(node => {
     if (node instanceof HTMLAnchorElement) {
@@ -114,7 +116,7 @@ function collectAnchorElements() {
         role: node.getAttribute('role') || '',
         name: node.name,
         text: node.innerText, // we don't want to return hidden text, so use innerText
-        textLang: lang || getLangOfInnerText(node),
+        textLang: lang !== null ? lang : getLangOfInnerText(node),
         rel: node.rel,
         target: node.target,
         // @ts-expect-error - getNodeDetails put into scope via stringification
@@ -128,7 +130,7 @@ function collectAnchorElements() {
       onclick: getTruncatedOnclick(node),
       role: node.getAttribute('role') || '',
       text: node.textContent || '',
-      textLang: lang || getLangOfInnerText(node),
+      textLang: lang !== null ? lang : getLangOfInnerText(node),
       rel: '',
       target: node.target.baseVal || '',
       // @ts-expect-error - getNodeDetails put into scope via stringification
