@@ -6,7 +6,7 @@
 
 /* global getNodeDetails */
 
-import FRGatherer from '../base-gatherer.js';
+import BaseGatherer from '../base-gatherer.js';
 import {pageFunctions} from '../../lib/page-functions.js';
 import {resolveDevtoolsNodePathToObjectId} from '../driver/dom.js';
 
@@ -119,6 +119,7 @@ function collectAnchorElements() {
         textLang: lang !== null ? lang : getLangOfInnerText(node),
         rel: node.rel,
         target: node.target,
+        id: node.getAttribute('id') || '',
         // @ts-expect-error - getNodeDetails put into scope via stringification
         node: getNodeDetails(node),
       };
@@ -133,6 +134,7 @@ function collectAnchorElements() {
       textLang: lang !== null ? lang : getLangOfInnerText(node),
       rel: '',
       target: node.target.baseVal || '',
+      id: node.getAttribute('id') || '',
       // @ts-expect-error - getNodeDetails put into scope via stringification
       node: getNodeDetails(node),
     };
@@ -141,7 +143,7 @@ function collectAnchorElements() {
 /* c8 ignore stop */
 
 /**
- * @param {LH.Gatherer.FRProtocolSession} session
+ * @param {LH.Gatherer.ProtocolSession} session
  * @param {string} devtoolsNodePath
  * @return {Promise<Array<{type: string}>>}
  */
@@ -156,14 +158,14 @@ async function getEventListeners(session, devtoolsNodePath) {
   return response.listeners.map(({type}) => ({type}));
 }
 
-class AnchorElements extends FRGatherer {
+class AnchorElements extends BaseGatherer {
   /** @type {LH.Gatherer.GathererMeta} */
   meta = {
     supportedModes: ['snapshot', 'navigation'],
   };
 
   /**
-   * @param {LH.Gatherer.FRTransitionalContext} passContext
+   * @param {LH.Gatherer.Context} passContext
    * @return {Promise<LH.Artifacts['AnchorElements']>}
    */
   async getArtifact(passContext) {

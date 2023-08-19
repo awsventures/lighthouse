@@ -416,6 +416,10 @@ function addRedirectResponseIfNeeded(networkRecords, record) {
 function networkRecordsToDevtoolsLog(networkRecords, options = {}) {
   const devtoolsLog = [];
   networkRecords.forEach((networkRecord, index) => {
+    if (networkRecord.url && new URL(networkRecord.url).hash) {
+      throw new Error(`Network records should not have hashes: ${networkRecord.url}`);
+    }
+
     networkRecord = addRedirectResponseIfNeeded(networkRecords, networkRecord);
 
     const normalizedTiming = getNormalizedRequestTiming(networkRecord);
@@ -437,7 +441,10 @@ function networkRecordsToDevtoolsLog(networkRecords, options = {}) {
 
     devtoolsLog.push(getResponseReceivedEvent(networkRecord, index, normalizedTiming));
     devtoolsLog.push(getDataReceivedEvent(networkRecord, index));
-    devtoolsLog.push(getLoadingFinishedEvent(networkRecord, index, normalizedTiming));
+
+    if (networkRecord.finished !== false) {
+      devtoolsLog.push(getLoadingFinishedEvent(networkRecord, index, normalizedTiming));
+    }
   });
 
   // If in a test, assert that the log will turn into an equivalent networkRecords.
