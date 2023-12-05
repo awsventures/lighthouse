@@ -241,9 +241,11 @@ message LighthouseResult {
     // or `true` to use Lighthouse's default UA string.
     string emulated_user_agent = 17;
     // Flag indicating the run should only audit.
-    bool audit_mode = 18;
+    // Can be boolean or string, thus `Value` type
+    google.protobuf.Value audit_mode = 18;
     // Flag indicating the run should only gather.
-    bool gather_mode = 19;
+    // Can be boolean or string, thus `Value` type
+    google.protobuf.Value gather_mode = 19;
     // Flag indicating that the browser storage should not be reset for the
     // audit.
     bool disable_storage_reset = 20;
