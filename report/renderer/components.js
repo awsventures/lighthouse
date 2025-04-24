@@ -542,13 +542,7 @@ function createTopbarComponent(dom) {
   el28.setAttribute('href', '#');
   el28.setAttribute('data-i18n', 'dropdownDarkTheme');
   el28.setAttribute('data-action', 'toggle-dark');
-  const el29 = dom.createElement("a", "lh-report-icon lh-report-icon--experiment");
-  el29.setAttribute('role', 'menuitem');
-  el29.setAttribute('tabindex', '-1');
-  el29.setAttribute('href', '#');
-  el29.setAttribute('data-i18n', 'dropdownInsightsToggle');
-  el29.setAttribute('data-action', 'toggle-insights');
-  el19.append(" ",el20," ",el21," ",el22," "," ",el23," ",el24," ",el25," ",el26," "," ",el27," ",el28," ",el29," ");
+  el19.append(" ",el20," ",el21," ",el22," "," ",el23," ",el24," ",el25," ",el26," "," ",el27," ",el28," ");
   el8.append(" ",el9," ",el15," ",el19," ");
   el2.append(" "," ",el3," ",el7," ",el8," ");
   el0.append(el2);
