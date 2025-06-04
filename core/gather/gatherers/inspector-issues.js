@@ -1,7 +1,7 @@
 /**
- * @license Copyright 2020 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2020 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
@@ -54,7 +54,7 @@ class InspectorIssues extends BaseGatherer {
 
   /**
    * @param {LH.Gatherer.Context<'DevtoolsLog'>} context
-   * @return {Promise<LH.Artifacts['InspectorIssues']>}
+   * @return {Promise<LH.Artifacts.InspectorIssues>}
    */
   async getArtifact(context) {
     const devtoolsLog = context.dependencies.DevtoolsLog;
@@ -62,11 +62,13 @@ class InspectorIssues extends BaseGatherer {
 
     /** @type {LH.Artifacts.InspectorIssues} */
     const artifact = {
+      // TODO(v13): remove empty arrays.
       attributionReportingIssue: [],
       blockedByResponseIssue: [],
       bounceTrackingIssue: [],
       clientHintIssue: [],
       contentSecurityPolicyIssue: [],
+      cookieDeprecationMetadataIssue: [],
       corsIssue: [],
       deprecationIssue: [],
       federatedAuthRequestIssue: [],
@@ -75,32 +77,49 @@ class InspectorIssues extends BaseGatherer {
       lowTextContrastIssue: [],
       mixedContentIssue: [],
       navigatorUserAgentIssue: [],
+      partitioningBlobURLIssue: [],
+      propertyRuleIssue: [],
       quirksModeIssue: [],
       cookieIssue: [],
+      selectElementAccessibilityIssue: [],
       sharedArrayBufferIssue: [],
+      sharedDictionaryIssue: [],
       stylesheetLoadingIssue: [],
+      sriMessageSignatureIssue: [],
       federatedAuthUserInfoRequestIssue: [],
+      userReidentificationIssue: [],
     };
-    const keys = /** @type {Array<keyof LH.Artifacts['InspectorIssues']>} */(Object.keys(artifact));
-    for (const key of keys) {
-      /** @type {`${key}Details`} */
-      const detailsKey = `${key}Details`;
-      const allDetails = this._issues.map(issue => issue.details[detailsKey]);
-      for (const detail of allDetails) {
-        if (!detail) {
-          continue;
-        }
-        // Duplicate issues can occur for the same request; only use the one with a matching networkRequest.
-        const requestId = 'request' in detail && detail.request && detail.request.requestId;
-        if (requestId) {
-          if (networkRecords.find(req => req.requestId === requestId)) {
-            // @ts-expect-error - detail types are not all compatible
-            artifact[key].push(detail);
+
+    for (const issue of this._issues) {
+      const detailsKey = /** @type {keyof LH.Crdp.Audits.InspectorIssueDetails} */(
+        Object.keys(issue.details)[0]);
+      const details = issue.details[detailsKey];
+      if (!details) {
+        continue;
+      }
+
+      const artifactKey =
+        /** @type {LH.Artifacts.InspectorIssuesKeyToArtifactKey<typeof detailsKey>} */(
+          detailsKey.replace('Details', ''));
+
+      // Duplicate issues can occur for the same request; only use the one with a matching networkRequest.
+      const requestId = 'request' in details && details.request && details.request.requestId;
+      if (requestId) {
+        if (networkRecords.find(req => req.requestId === requestId)) {
+          if (!artifact[artifactKey]) {
+            artifact[artifactKey] = [];
           }
-        } else {
+
           // @ts-expect-error - detail types are not all compatible
-          artifact[key].push(detail);
+          artifact[artifactKey].push(details);
         }
+      } else {
+        if (!artifact[artifactKey]) {
+          artifact[artifactKey] = [];
+        }
+
+        // @ts-expect-error - detail types are not all compatible
+        artifact[artifactKey].push(details);
       }
     }
 

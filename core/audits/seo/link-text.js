@@ -1,7 +1,7 @@
 /**
- * @license Copyright 2017 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 import {Audit} from '../audit.js';
@@ -110,6 +110,20 @@ const nonDescriptiveLinkTexts = {
     'தயவுசெய்து இங்கே அழுத்தவும்',
     'இங்கே கிளிக் செய்யவும்',
   ]),
+  // Persian
+  'fa': new Set([
+    'اطلاعات بیشتر',
+    'اطلاعات',
+    'این',
+    'اینجا بزنید',
+    'اینجا کلیک کنید',
+    'اینجا',
+    'برو',
+    'بیشتر بخوانید',
+    'بیشتر بدانید',
+    'بیشتر',
+    'شروع',
+  ]),
 };
 
 const UIStrings = {
@@ -165,15 +179,10 @@ class LinkText extends Audit {
 
         const searchTerm = link.text.trim().toLowerCase();
 
-        if (searchTerm) {
-          // walk through lang code, e. g. "en-US" or "zh-cmn-Hans-CN"
-          let lang = link.textLang;
-          while (lang) {
-            if (nonDescriptiveLinkTexts[lang] &&
-              nonDescriptiveLinkTexts[lang].has(searchTerm)) {
-              return true;
-            }
-            lang = lang.substring(0, lang.lastIndexOf('-'));
+        if (searchTerm && link.textLang) {
+          const lang = link.textLang.split('-')[0];
+          if (nonDescriptiveLinkTexts[lang] && nonDescriptiveLinkTexts[lang].has(searchTerm)) {
+            return true;
           }
         }
 

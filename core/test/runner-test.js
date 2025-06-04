@@ -1,7 +1,7 @@
 /**
- * @license Copyright 2016 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2016 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 import fs from 'fs';
@@ -35,11 +35,6 @@ await td.replaceEsm('../lib/asset-saver.js', {
   loadArtifacts: loadArtifactsSpy = jestMock.fn((...args) => assetSaver.loadArtifacts(...args)),
 });
 
-await td.replaceEsm('../gather/driver/service-workers.js', {
-  getServiceWorkerVersions: jestMock.fn().mockResolvedValue({versions: []}),
-  getServiceWorkerRegistrations: jestMock.fn().mockResolvedValue({registrations: []}),
-});
-
 // Some imports needs to be done dynamically, so that their dependencies will be mocked.
 // https://github.com/GoogleChrome/lighthouse/blob/main/docs/hacking-tips.md#mocking-modules-with-testdouble
 const {Runner} = await import('../runner.js');
@@ -47,7 +42,7 @@ const {initializeConfig} = await import('../config/config.js');
 const {Audit} = await import('../audits/audit.js');
 const {default: Gatherer} = await import('../gather/base-gatherer.js');
 const i18n = await import('../lib/i18n/i18n.js');
-const {getModuleDirectory} = await import('../../esm-utils.js');
+const {getModuleDirectory} = await import('../../shared/esm-utils.js');
 const {LighthouseError} = await import('../lib/lh-error.js');
 const {finalizeArtifacts, getBaseArtifacts} = await import('../gather/base-artifacts.js');
 const {gotoURL} = await import('../gather/driver/navigation.js');
@@ -130,9 +125,9 @@ describe('Runner', () => {
     const url = 'https://example.com';
     const generateConfig = settings => initializeConfig('navigation', {
       artifacts: [
-        {id: 'ViewportDimensions', gatherer: 'viewport-dimensions'},
+        {id: 'MetaElements', gatherer: 'meta-elements'},
       ],
-      audits: ['content-width'],
+      audits: ['viewport'],
       settings,
     }).then(r => r.resolvedConfig);
     const artifactsPath = '.tmp/test_artifacts';
@@ -149,7 +144,7 @@ describe('Runner', () => {
         expect(saveArtifactsSpy).toHaveBeenCalled();
 
         const saveArtifactArg = saveArtifactsSpy.mock.calls[0][0];
-        assert.ok(saveArtifactArg.ViewportDimensions);
+        assert.ok(saveArtifactArg.MetaElements);
 
         expect(mockGatherImpl).toHaveBeenCalled();
         expect(runAuditSpy).not.toHaveBeenCalled();
@@ -195,7 +190,7 @@ describe('Runner', () => {
           auditMode: moduleDir + '/fixtures/artifacts/perflog/',
         },
         audits: [
-          'content-width',
+          'viewport',
         ],
       });
 
@@ -270,7 +265,7 @@ describe('Runner', () => {
       // Artifacts are still localizable.
       const artifacts = assetSaver.loadArtifacts(resolvedPath);
       expect(artifacts.LighthouseRunWarnings[0]).not.toBe('string');
-      expect(artifacts.LighthouseRunWarnings[0]).toBeDisplayString('Potential savings of 2 KiB');
+      expect(artifacts.LighthouseRunWarnings[0]).toBeDisplayString('Est savings of 2 KiB');
       expect(artifacts.WarningAndErrorGatherer).toMatchObject({
         name: 'LighthouseError',
         code: 'UNSUPPORTED_OLD_CHROME',
@@ -302,7 +297,7 @@ describe('Runner', () => {
         {resolvedConfig: auditConfig, computedCache: new Map()});
 
       // Messages are now localized and formatted.
-      expect(lhr.runWarnings[0]).toBe('Potential savings of 2 KiB');
+      expect(lhr.runWarnings[0]).toBe('Est savings of 2 KiB');
       expect(lhr.audits['dummy-audit']).toMatchObject({
         scoreDisplayMode: 'error',
         // eslint-disable-next-line max-len
@@ -315,11 +310,11 @@ describe('Runner', () => {
     const url = 'https://example.com';
     const {resolvedConfig} = await initializeConfig('navigation', {
       artifacts: [{
-        id: 'ViewportDimensions',
-        gatherer: 'viewport-dimensions',
+        id: 'MetaElements',
+        gatherer: 'meta-elements',
       }],
       audits: [
-        'content-width',
+        'viewport',
       ],
     });
 
@@ -394,11 +389,11 @@ describe('Runner', () => {
   it('finds correct timings for multiple gather/audit pairs run separately', async () => {
     const {resolvedConfig} = await initializeConfig('navigation', {
       artifacts: [{
-        id: 'ViewportDimensions',
-        gatherer: 'viewport-dimensions',
+        id: 'MetaElements',
+        gatherer: 'meta-elements',
       }],
       audits: [
-        'content-width',
+        'viewport',
       ],
     });
     const options1 = {resolvedConfig, driverMock, computedCache: new Map()};
@@ -427,12 +422,11 @@ describe('Runner', () => {
           auditMode: moduleDir + '/fixtures/artifacts/empty-artifacts/',
         },
         audits: [
-          // requires traces[Audit.DEFAULT_PASS]
+          // requires Trace
           'user-timings',
         ],
         artifacts: [
           {id: 'Trace', gatherer: 'trace'},
-          {id: 'traces', gatherer: 'trace-compat'},
         ],
       });
 
@@ -440,7 +434,7 @@ describe('Runner', () => {
       const auditResult = results.lhr.audits['user-timings'];
       assert.strictEqual(auditResult.score, null);
       assert.strictEqual(auditResult.scoreDisplayMode, 'error');
-      assert.ok(auditResult.errorMessage.includes('traces'));
+      assert.ok(auditResult.errorMessage.includes('Trace'));
     });
 
     it('outputs an error audit result when devtoolsLog required but not provided', async () => {
@@ -449,12 +443,11 @@ describe('Runner', () => {
           auditMode: moduleDir + '/fixtures/artifacts/empty-artifacts/',
         },
         audits: [
-          // requires devtoolsLogs[Audit.DEFAULT_PASS]
+          // requires DevtoolsLog
           'is-on-https',
         ],
         artifacts: [
           {id: 'DevtoolsLog', gatherer: 'devtools-log'},
-          {id: 'devtoolsLogs', gatherer: 'devtools-log-compat'},
           {id: 'InspectorIssues', gatherer: 'inspector-issues'},
         ],
       });
@@ -463,7 +456,7 @@ describe('Runner', () => {
       const auditResult = results.lhr.audits['is-on-https'];
       assert.strictEqual(auditResult.score, null);
       assert.strictEqual(auditResult.scoreDisplayMode, 'error');
-      assert.strictEqual(auditResult.errorMessage, 'Required devtoolsLogs gatherer did not run.');
+      assert.strictEqual(auditResult.errorMessage, 'Required DevtoolsLog gatherer did not run.');
     });
 
     it('outputs an error audit result when missing a required artifact', async () => {
@@ -472,19 +465,19 @@ describe('Runner', () => {
           auditMode: moduleDir + '/fixtures/artifacts/empty-artifacts/',
         },
         audits: [
-          // requires the ViewportDimensions artifact
-          'content-width',
+          // requires the MetaElements artifact
+          'viewport',
         ],
         artifacts: [
-          {id: 'ViewportDimensions', gatherer: 'viewport-dimensions'},
+          {id: 'MetaElements', gatherer: 'meta-elements'},
         ],
       });
 
       return runGatherAndAudit({}, {resolvedConfig}).then(results => {
-        const auditResult = results.lhr.audits['content-width'];
+        const auditResult = results.lhr.audits['viewport'];
         assert.strictEqual(auditResult.score, null);
         assert.strictEqual(auditResult.scoreDisplayMode, 'error');
-        assert.ok(auditResult.errorMessage.includes('ViewportDimensions'));
+        assert.ok(auditResult.errorMessage.includes('MetaElements'));
       });
     });
 
@@ -497,7 +490,7 @@ describe('Runner', () => {
       const errorMessage = 'blurst of times';
       const artifacts = {
         ...baseArtifacts,
-        ViewportDimensions: new Error(errorMessage),
+        MetaElements: new Error(errorMessage),
       };
       const artifactsPath = '.tmp/test_artifacts';
       const resolvedPath = path.resolve(process.cwd(), artifactsPath);
@@ -509,16 +502,16 @@ describe('Runner', () => {
           auditMode: resolvedPath,
         },
         audits: [
-          // requires ViewportDimensions artifact
-          'content-width',
+          // requires MetaElements artifact
+          'viewport',
         ],
         artifacts: [
-          {id: 'ViewportDimensions', gatherer: 'viewport-dimensions'},
+          {id: 'MetaElements', gatherer: 'meta-elements'},
         ],
       });
 
       const results = await runGatherAndAudit({}, {resolvedConfig});
-      const auditResult = results.lhr.audits['content-width'];
+      const auditResult = results.lhr.audits['viewport'];
       assert.strictEqual(auditResult.score, null);
       assert.strictEqual(auditResult.scoreDisplayMode, 'error');
       assert.ok(auditResult.errorMessage.includes(errorMessage));
@@ -699,6 +692,8 @@ describe('Runner', () => {
         {id: 'DevtoolsLog', gatherer: 'devtools-log'},
         {id: 'traces', gatherer: 'trace-compat'},
         {id: 'devtoolsLogs', gatherer: 'devtools-log-compat'},
+        {id: 'Scripts', gatherer: 'scripts'},
+        {id: 'SourceMaps', gatherer: 'source-maps'},
       ],
     });
 
@@ -730,10 +725,10 @@ describe('Runner', () => {
     const url = 'https://example.com/';
     const {resolvedConfig} = await initializeConfig('navigation', {
       audits: [
-        'content-width',
+        'viewport',
       ],
       artifacts: [
-        {id: 'ViewportDimensions', gatherer: 'viewport-dimensions'},
+        {id: 'MetaElements', gatherer: 'meta-elements'},
       ],
     });
 
@@ -742,7 +737,7 @@ describe('Runner', () => {
       assert.ok(results.lhr.lighthouseVersion);
       assert.ok(results.lhr.fetchTime);
       assert.equal(results.lhr.requestedUrl, url);
-      assert.equal(results.lhr.audits['content-width'].id, 'content-width');
+      assert.equal(results.lhr.audits['viewport'].id, 'viewport');
       expect(mockGatherImpl).toHaveBeenCalled();
     });
   });
@@ -751,18 +746,18 @@ describe('Runner', () => {
     const url = 'https://example.com/';
     const {resolvedConfig} = await initializeConfig('navigation', {
       artifacts: [{
-        id: 'ViewportDimensions',
-        gatherer: 'viewport-dimensions',
+        id: 'MetaElements',
+        gatherer: 'meta-elements',
       }],
       audits: [
-        'content-width',
+        'viewport',
       ],
       categories: {
         category: {
           title: 'Category',
           description: '',
           auditRefs: [
-            {id: 'content-width', weight: 1},
+            {id: 'viewport', weight: 1},
           ],
         },
       },
@@ -774,10 +769,8 @@ describe('Runner', () => {
       assert.ok(results.lhr.lighthouseVersion);
       assert.ok(results.lhr.fetchTime);
       assert.equal(results.lhr.requestedUrl, url);
-      assert.equal(results.lhr.audits['content-width'].id, 'content-width');
-      assert.equal(results.lhr.audits['content-width'].score, 1);
-      assert.equal(results.lhr.categories.category.score, 1);
-      assert.equal(results.lhr.categories.category.auditRefs[0].id, 'content-width');
+      assert.equal(results.lhr.audits['viewport'].id, 'viewport');
+      assert.equal(results.lhr.categories.category.auditRefs[0].id, 'viewport');
     });
   });
 
@@ -797,7 +790,7 @@ describe('Runner', () => {
         auditMode: moduleDir + '/fixtures/artifacts/perflog/',
       },
       audits: [
-        'content-width',
+        'viewport',
       ],
     });
 
@@ -812,18 +805,17 @@ describe('Runner', () => {
     const {resolvedConfig} = await initializeConfig('navigation', {
       artifacts: [
         {id: 'MetaElements', gatherer: 'meta-elements'},
-        {id: 'ViewportDimensions', gatherer: 'viewport-dimensions'},
       ],
 
       audits: [
-        'content-width',
+        'viewport',
       ],
     });
 
     const options = {resolvedConfig, driverMock, computedCache: new Map()};
     return runGatherAndAudit(createGatherFn(url), options).then(results => {
       // User-specified artifact.
-      assert.ok(results.artifacts.ViewportDimensions);
+      assert.ok(results.artifacts.MetaElements);
     });
   });
 
