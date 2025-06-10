@@ -12,7 +12,7 @@ gcloud --project="$CLOUDSDK_CORE_PROJECT" compute instances create lantern-colle
   --zone="$ZONE" \
   --boot-disk-size=200GB \
   --boot-disk-type=pd-standard \
-  --machine-type=n1-standard-4
+  --machine-type=n2-standard-4
 
 # Instance needs time to start up.
 echo "ok" > .tmp_connected
