@@ -20,9 +20,6 @@ git checkout -f origin/main
 yarn install
 yarn build-report
 
-# Import WPT_KEY vars
-source /home/lighthouse/.env
-
 # Run the collection
 DEBUG=1 xvfb-run node --max-old-space-size=4096 ./core/scripts/lantern/collect/collect.js
 

@@ -48,8 +48,8 @@ import {LH_ROOT} from '../../../shared/root.js';
  * @property {number} [speedIndex]
  * @property {number} [largestContentfulPaint]
  * @property {number} [timeToFirstByte]
- * @property {number} [largestContentfulPaintLoadStart]
- * @property {number} [largestContentfulPaintLoadEnd]
+ * @property {number} [lcpLoadStart]
+ * @property {number} [lcpLoadEnd]
  */
 
 /**
@@ -199,10 +199,9 @@ export default {
       roughEstimateOfSI: evaluate('speedIndex', 'roughEstimateOfSI'),
       roughEstimateOfTTI: evaluate('timeToConsistentlyInteractive', 'roughEstimateOfTTI'),
       roughEstimateOfLCP: evaluate('largestContentfulPaint', 'roughEstimateOfLCP'),
-      // TODO: enable when new traces are collected.
-      // roughEstimateOfTTFB: evaluate('timeToFirstByte', 'roughEstimateOfTTFB'),
-      // roughEstimateOfLCPLoadStart: evaluate('largestContentfulPaintLoadStart', 'roughEstimateOfLCPLoadStart'),
-      // roughEstimateOfLCPLoadEnd: evaluate('largestContentfulPaintLoadEnd', 'roughEstimateOfLCPLoadEnd'),
+      roughEstimateOfTTFB: evaluate('timeToFirstByte', 'roughEstimateOfTTFB'),
+      roughEstimateOfLCPLoadStart: evaluate('lcpLoadStart', 'roughEstimateOfLCPLoadStart'),
+      roughEstimateOfLCPLoadEnd: evaluate('lcpLoadEnd', 'roughEstimateOfLCPLoadEnd'),
     };
   },
 };

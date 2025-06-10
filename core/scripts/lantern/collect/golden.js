@@ -31,24 +31,26 @@ function makeGolden(log, summary) {
       log.log(`excluding ${url}`);
       continue;
     }
+
     // Should never happen.
     if (!unthrottled.devtoolsLog) throw new Error(`missing devtoolsLog for ${url}`);
 
     log.progress(`getting metrics ${Number(index) + 1} / ${summary.results.length}`);
-    const wptMetrics = common.getMetrics(loadLhr(wpt.lhr));
-    if (!wptMetrics) {
-      throw new Error('expected wptMetrics');
+    const mobileMetrics = common.getMetrics(loadLhr(wpt.lhr));
+    if (!mobileMetrics) {
+      throw new Error('expected mobileMetrics');
     }
+
     goldenSites.push({
       url,
       wpt3g: {
-        firstContentfulPaint: wptMetrics.firstContentfulPaint,
-        timeToConsistentlyInteractive: wptMetrics.interactive,
-        speedIndex: wptMetrics.speedIndex,
-        largestContentfulPaint: wptMetrics.largestContentfulPaint,
-        timeToFirstByte: wptMetrics.timeToFirstByte,
-        lcpLoadStart: wptMetrics.lcpLoadStart,
-        lcpLoadEnd: wptMetrics.lcpLoadEnd,
+        firstContentfulPaint: mobileMetrics.firstContentfulPaint,
+        timeToConsistentlyInteractive: mobileMetrics.interactive,
+        speedIndex: mobileMetrics.speedIndex,
+        largestContentfulPaint: mobileMetrics.largestContentfulPaint,
+        timeToFirstByte: mobileMetrics.timeToFirstByte,
+        lcpLoadStart: mobileMetrics.lcpLoadStart,
+        lcpLoadEnd: mobileMetrics.lcpLoadEnd,
       },
       unthrottled: {
         tracePath: unthrottled.trace,
