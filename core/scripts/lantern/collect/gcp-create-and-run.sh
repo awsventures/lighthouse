@@ -8,9 +8,9 @@ CLOUDSDK_CORE_PROJECT=lighthouse-lantern-collect
 ZONE=us-central1-a
 
 gcloud --project="$CLOUDSDK_CORE_PROJECT" compute instances create lantern-collect-instance \
-  --image-family=ubuntu-1804-lts --image-project=ubuntu-os-cloud \
+  --image-family=ubuntu-2004-lts --image-project=ubuntu-os-cloud \
   --zone="$ZONE" \
-  --boot-disk-size=100GB \
+  --boot-disk-size=200GB \
   --machine-type=n1-standard-2
 
 # Instance needs time to start up.
