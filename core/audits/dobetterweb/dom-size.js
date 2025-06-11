@@ -1,7 +1,7 @@
 /**
- * @license Copyright 2017 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
@@ -53,9 +53,10 @@ class DOMSize extends Audit {
       title: str_(UIStrings.title),
       failureTitle: str_(UIStrings.failureTitle),
       description: str_(UIStrings.description),
-      scoreDisplayMode: Audit.SCORING_MODES.NUMERIC,
+      scoreDisplayMode: Audit.SCORING_MODES.METRIC_SAVINGS,
+      guidanceLevel: 1,
       requiredArtifacts: ['DOMStats', 'URL', 'GatherContext'],
-      __internalOptionalArtifacts: ['traces', 'devtoolsLogs'],
+      __internalOptionalArtifacts: ['Trace', 'DevtoolsLog', 'SourceMaps'],
     };
   }
 
@@ -81,14 +82,14 @@ class DOMSize extends Audit {
 
     // We still want to surface this audit in snapshot mode, but since we don't compute TBT
     // the impact should always be undefined.
-    const {GatherContext, devtoolsLogs, traces} = artifacts;
+    const {GatherContext, DevtoolsLog, Trace} = artifacts;
     if (GatherContext.gatherMode !== 'navigation') {
       return undefined;
     }
 
     // Since the artifacts are optional, it's still possible for them to be missing in navigation mode.
     // Navigation mode does compute TBT so we should surface a numerical savings of 0.
-    if (!devtoolsLogs?.[Audit.DEFAULT_PASS] || !traces?.[Audit.DEFAULT_PASS]) {
+    if (!DevtoolsLog || !Trace) {
       return 0;
     }
 

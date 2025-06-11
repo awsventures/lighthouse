@@ -1,20 +1,17 @@
 /**
- * @license Copyright 2020 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2020 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-import jestMock from 'jest-mock';
-
 import {Audit as BaseAudit} from '../../audits/audit.js';
-import * as constants from '../../config/constants.js';
 import BaseGatherer from '../../gather/base-gatherer.js';
 import {initializeConfig, getConfigDisplayString} from '../../config/config.js';
-import {LH_ROOT} from '../../../root.js';
+import {LH_ROOT} from '../../../shared/root.js';
 import * as format from '../../../shared/localization/format.js';
 import defaultConfig from '../../config/default-config.js';
-
-const {nonSimulatedPassConfigOverrides} = constants;
+import {nonSimulatedSettingsOverrides} from '../../config/constants.js';
+import {fnAny} from '../test-utils.js';
 
 describe('Config', () => {
   /** @type {LH.Gatherer.GatherMode} */
@@ -76,6 +73,27 @@ describe('Config', () => {
     });
   });
 
+  it('should ensure minimum quiet thresholds when throttlingMethod is devtools', async () => {
+    gatherMode = 'navigation';
+    const config = {
+      settings: {
+        cpuQuietThresholdMs: 10_000,
+      },
+      artifacts: [{id: 'Accessibility', gatherer: 'accessibility'}],
+    };
+
+    const {resolvedConfig} = await initializeConfig(gatherMode, config, {
+      throttlingMethod: 'devtools',
+    });
+
+    expect(resolvedConfig.settings).toMatchObject({
+      cpuQuietThresholdMs: 10_000,
+      pauseAfterFcpMs: nonSimulatedSettingsOverrides.pauseAfterFcpMs,
+      pauseAfterLoadMs: nonSimulatedSettingsOverrides.pauseAfterLoadMs,
+      networkQuietThresholdMs: nonSimulatedSettingsOverrides.networkQuietThresholdMs,
+    });
+  });
+
   it('should resolve artifact definitions', async () => {
     const config = {artifacts: [{id: 'Accessibility', gatherer: 'accessibility'}]};
     const {resolvedConfig} = await initializeConfig(gatherMode, config);
@@ -87,14 +105,14 @@ describe('Config', () => {
 
   it('should throw on invalid artifact definitions', async () => {
     const badGatherer = new BaseGatherer();
-    badGatherer.getArtifact = jestMock.fn();
+    badGatherer.getArtifact = fnAny();
     const config = {artifacts: [{id: 'BadGatherer', gatherer: {instance: badGatherer}}]};
     await expect(initializeConfig(gatherMode, config)).rejects.toThrow(/Gatherer for BadGather/);
   });
 
   it('should filter configuration by gatherMode', async () => {
     const timespanGatherer = new BaseGatherer();
-    timespanGatherer.getArtifact = jestMock.fn();
+    timespanGatherer.getArtifact = fnAny();
     timespanGatherer.meta = {supportedModes: ['timespan']};
 
     const config = {
@@ -167,11 +185,11 @@ describe('Config', () => {
     beforeEach(() => {
       const dependencySymbol = Symbol('dependency');
       dependencyGatherer = new BaseGatherer();
-      dependencyGatherer.getArtifact = jestMock.fn();
+      dependencyGatherer.getArtifact = fnAny();
       dependencyGatherer.meta = {symbol: dependencySymbol, supportedModes: ['snapshot']};
       // @ts-expect-error - we satisfy the interface on the next line
       dependentGatherer = new BaseGatherer();
-      dependentGatherer.getArtifact = jestMock.fn();
+      dependentGatherer.getArtifact = fnAny();
       dependentGatherer.meta = {
         supportedModes: ['snapshot'],
         dependencies: {ImageElements: dependencySymbol},
@@ -203,25 +221,6 @@ describe('Config', () => {
       });
     });
 
-    it('should resolve artifact dependencies in navigations', async () => {
-      const {resolvedConfig} = await initializeConfig('snapshot', config);
-      expect(resolvedConfig).toMatchObject({
-        navigations: [
-          {
-            artifacts: [
-              {id: 'Dependency'},
-              {
-                id: 'Dependent',
-                dependencies: {
-                  ImageElements: {id: 'Dependency'},
-                },
-              },
-            ],
-          },
-        ],
-      });
-    });
-
     it('should throw when dependencies are out of order in artifacts', async () => {
       if (!config.artifacts) throw new Error('Failed to run beforeEach');
       config.artifacts = [config.artifacts[1], config.artifacts[0]];
@@ -244,77 +243,13 @@ describe('Config', () => {
     });
   });
 
-  describe('.resolveFakeNavigations', () => {
-    it('should resolve a single fake navigation definitions', async () => {
-      const config = {
-        artifacts: [{id: 'Accessibility', gatherer: 'accessibility'}],
-      };
-      const {resolvedConfig} = await initializeConfig('navigation', config);
-
-      expect(resolvedConfig).toMatchObject({
-        artifacts: [{id: 'Accessibility', gatherer: {path: 'accessibility'}}],
-        navigations: [{
-          id: 'defaultPass',
-          artifacts: [{id: 'Accessibility', gatherer: {path: 'accessibility'}}],
-        }],
-      });
-    });
-
-    it('should set default properties on navigations', async () => {
-      gatherMode = 'navigation';
-      const config = {
-        artifacts: [{id: 'Accessibility', gatherer: 'accessibility'}],
-      };
-      const {resolvedConfig} = await initializeConfig(gatherMode, config);
-
-      expect(resolvedConfig).toMatchObject({
-        navigations: [
-          {
-            id: 'defaultPass',
-            blankPage: 'about:blank',
-            artifacts: [{id: 'Accessibility', gatherer: {path: 'accessibility'}}],
-            loadFailureMode: 'fatal',
-            disableThrottling: false,
-            networkQuietThresholdMs: 1000,
-            cpuQuietThresholdMs: 1000,
-          },
-        ],
-      });
-    });
-
-    it('should ensure minimum quiet thresholds when throttlingMethod is devtools', async () => {
-      gatherMode = 'navigation';
-      const config = {
-        settings: {
-          cpuQuietThresholdMs: 10_000,
-        },
-        artifacts: [{id: 'Accessibility', gatherer: 'accessibility'}],
-      };
-
-      const {resolvedConfig} = await initializeConfig(gatherMode, config, {
-        throttlingMethod: 'devtools',
-      });
-
-      expect(resolvedConfig).toMatchObject({
-        navigations: [
-          {
-            cpuQuietThresholdMs: 10_000,
-            pauseAfterFcpMs: nonSimulatedPassConfigOverrides.pauseAfterFcpMs,
-            pauseAfterLoadMs: nonSimulatedPassConfigOverrides.pauseAfterLoadMs,
-            networkQuietThresholdMs: nonSimulatedPassConfigOverrides.networkQuietThresholdMs,
-          },
-        ],
-      });
-    });
-  });
-
   describe('.resolveExtensions', () => {
     /** @type {LH.Config} */
     let extensionConfig;
 
     beforeEach(() => {
       const gatherer = new BaseGatherer();
-      gatherer.getArtifact = jestMock.fn();
+      gatherer.getArtifact = fnAny();
       gatherer.meta = {supportedModes: ['navigation']};
 
       class ExtraAudit extends BaseAudit {
@@ -366,9 +301,6 @@ describe('Config', () => {
         artifacts: [
           {id: 'Accessibility'},
         ],
-        navigations: [
-          {id: 'defaultPass', artifacts: [{id: 'Accessibility'}]},
-        ],
       });
     });
 
@@ -409,21 +341,9 @@ describe('Config', () => {
         'BFCacheFailures', // Has internal priority of 1
         'FullPageScreenshot', // Has internal priority of 1
         'ExtraArtifact', // Has default priority of 0
-        'traces', // Has default priority of 0
-        'devtoolsLogs', // Has default priority of 0
+        'ViewportDimensions', // Has default priority of 0
+        'TraceElements', // Has default priority of 0
       ]);
-    });
-
-    it('should merge in navigations', async () => {
-      const {resolvedConfig} = await initializeConfig('navigation', extensionConfig);
-      if (!resolvedConfig.navigations) throw new Error(`No navigations created`);
-
-      expect(resolvedConfig.navigations).toHaveLength(1);
-      const hasNavigation = resolvedConfig.navigations[0].artifacts.
-        some(a => a.id === 'ExtraArtifact');
-      if (!hasNavigation) {
-        expect(resolvedConfig.navigations[0].artifacts).toContain('ExtraArtifact');
-      }
     });
 
     it('should merge in audits', async () => {
@@ -453,19 +373,6 @@ describe('Config', () => {
     });
   });
 
-  it('should use failure mode fatal for the fake navigation', async () => {
-    /** @type {LH.Config} */
-    const extensionConfig = {
-      extends: 'lighthouse:default',
-    };
-
-    const {resolvedConfig, warnings} = await initializeConfig('navigation', extensionConfig);
-    const navigations = resolvedConfig.navigations;
-    if (!navigations) throw new Error(`Failed to initialize navigations`);
-    expect(warnings).toHaveLength(0);
-    expect(navigations[0].loadFailureMode).toEqual('fatal');
-  });
-
   it('should validate the resolvedConfig with fatal errors', async () => {
     /** @type {LH.Config} */
     const extensionConfig = {
@@ -486,7 +393,7 @@ describe('getConfigDisplayString', () => {
       passes: [{
         passName: 'defaultPass',
         gatherers: [
-          {path: 'script-elements'},
+          {path: 'scripts'},
         ],
       }],
       audits: [

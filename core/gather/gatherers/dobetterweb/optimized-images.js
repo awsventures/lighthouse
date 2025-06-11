@@ -1,14 +1,12 @@
 /**
- * @license Copyright 2017 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**
-  * @fileoverview Determines optimized jpeg/webp filesizes for all same-origin and dataURI images by
-  *   running the images through canvas in the browser context.
+  * @fileoverview Determines optimized jpeg/webp filesizes for all same-origin and dataURI images
   */
-
 
 import log from 'lighthouse-logger';
 
@@ -54,8 +52,8 @@ class OptimizedImages extends BaseGatherer {
     /** @type {Set<string>} */
     const seenUrls = new Set();
     return networkRecords.reduce((prev, record) => {
-      // Skip records that we've seen before, never finished, or came from OOPIFs.
-      if (seenUrls.has(record.url) || !record.finished || record.isOutOfProcessIframe) {
+      // Skip records that we've seen before, never finished, or came from OOPIFs/web workers.
+      if (seenUrls.has(record.url) || !record.finished || record.sessionTargetType !== 'page') {
         return prev;
       }
 
@@ -133,7 +131,7 @@ class OptimizedImages extends BaseGatherer {
         const image = {failed: false, ...stats, ...record};
         results.push(image);
       } catch (err) {
-        log.warn('optimized-images', err.message);
+        log.warn('optimized-images', err.message, record.url);
 
         // Track this with Sentry since these errors aren't surfaced anywhere else, but we don't
         // want to tank the entire run due to a single image.
@@ -164,12 +162,7 @@ class OptimizedImages extends BaseGatherer {
       .filterImageRequests(networkRecords)
       .sort((a, b) => b.resourceSize - a.resourceSize);
 
-    const results = await this.computeOptimizedImages(context.driver.defaultSession, imageRecords);
-    const successfulResults = results.filter(result => !result.failed);
-    if (results.length && !successfulResults.length) {
-      throw new Error('All image optimizations failed');
-    }
-    return results;
+    return await this.computeOptimizedImages(context.driver.defaultSession, imageRecords);
   }
 }
 

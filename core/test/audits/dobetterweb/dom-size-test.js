@@ -1,7 +1,7 @@
 /**
- * @license Copyright 2017 The Lighthouse Authors. All Rights Reserved.
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 import assert from 'assert/strict';
@@ -18,19 +18,18 @@ describe('DOMSize audit', () => {
 
   beforeEach(() => {
     const mainDocumentUrl = 'https://example.com/';
-
+    const networkRecords = [{url: mainDocumentUrl, priority: 'High', transferSize: 1000}];
     const trace = createTestTrace({
+      largestContentfulPaint: 15,
       topLevelTasks: [
         {ts: 1000, duration: 1000, children: [
           {ts: 1100, duration: 200, eventName: 'ScheduleStyleRecalculation'},
         ]},
       ],
+      networkRecords,
     });
 
-    const devtoolsLog = networkRecordsToDevtoolsLog([{
-      url: mainDocumentUrl,
-      priority: 'High',
-    }]);
+    const devtoolsLog = networkRecordsToDevtoolsLog(networkRecords);
 
     artifacts = {
       DOMStats: {
@@ -44,8 +43,9 @@ describe('DOMSize audit', () => {
         mainDocumentUrl,
         finalDisplayedUrl: mainDocumentUrl,
       },
-      traces: {defaultPass: trace},
-      devtoolsLogs: {defaultPass: devtoolsLog},
+      Trace: trace,
+      DevtoolsLog: devtoolsLog,
+      SourceMaps: [],
     };
     context = {
       options,
@@ -75,8 +75,8 @@ describe('DOMSize audit', () => {
   });
 
   it('works if missing trace/dtlog in navigation mode', async () => {
-    artifacts.devtoolsLogs = undefined;
-    artifacts.traces = undefined;
+    artifacts.DevtoolsLog = undefined;
+    artifacts.Trace = undefined;
     const auditResult = await DOMSize.audit(artifacts, context);
     expect(auditResult.score).toEqual(0.43);
     expect(auditResult.metricSavings).toEqual({TBT: 0});
@@ -84,7 +84,7 @@ describe('DOMSize audit', () => {
 
   it('works if tbt impact throws an error', async () => {
     // Empty array will cause an error.
-    artifacts.traces.defaultPass = [];
+    artifacts.Trace.traceEvents = [];
 
     const auditResult = await DOMSize.audit(artifacts, context);
     expect(auditResult.score).toEqual(0.43);
