@@ -52,8 +52,6 @@ const UIStrings = {
   issueTypeQuirksMode: 'Document renders in quirks mode',
   /** Issue related to a shared array buffer not being used in context a that is cross-origin isolated. */
   issueTypeSharedArrayBuffer: 'Shared Array Buffer not cross-origin isolated',
-  /** Issue related to not meeting the requirements as a TWA. */
-  issueTypeTwaQualityEnforcement: 'Some TWA requirements not met',
 };
 
 const str_ = i18n.createIcuMessageFn(import.meta.url, UIStrings);
@@ -246,7 +244,7 @@ class IssuesPanelEntries extends Audit {
       issueType: str_(UIStrings.issueTypeFederatedAuthRequest),
       subItems: {
         type: 'subitems',
-        items: [{url: url}],
+        items: [{url}],
       },
     };
   }
@@ -261,7 +259,7 @@ class IssuesPanelEntries extends Audit {
       issueType: str_(UIStrings.issueTypeGeneric),
       subItems: {
         type: 'subitems',
-        items: [{url: url}],
+        items: [{url}],
       },
     };
   }
@@ -344,24 +342,6 @@ class IssuesPanelEntries extends Audit {
   }
 
   /**
-   * @param {Array<LH.Crdp.Audits.TrustedWebActivityIssueDetails>} twaQualityEnforcementIssues
-   * @return {LH.Audit.Details.TableItem}
-   */
-  static getTwaQualityEnforcementRow(twaQualityEnforcementIssues) {
-    const urls = new Set();
-    for (const issue of twaQualityEnforcementIssues) {
-      urls.add(issue.url);
-    }
-    return {
-      issueType: str_(UIStrings.issueTypeTwaQualityEnforcement),
-      subItems: {
-        type: 'subitems',
-        items: Array.from(urls).map(url => ({url})),
-      },
-    };
-  }
-
-  /**
    * @param {LH.Artifacts} artifacts
    * @return {LH.Audit.Product}
    */
@@ -392,39 +372,36 @@ class IssuesPanelEntries extends Audit {
     if (issues.contentSecurityPolicyIssue?.length) {
       items.push(this.getContentSecurityPolicyRow(issues.contentSecurityPolicyIssue));
     }
-    if (issues.attributionReportingIssue.length) {
+    if (issues.attributionReportingIssue?.length) {
       items.push(this.getAttributionReportingRow(issues.attributionReportingIssue));
     }
-    if (issues.clientHintIssue.length) {
+    if (issues.clientHintIssue?.length) {
       items.push(this.getClientHintRow(issues.clientHintIssue));
     }
-    if (issues.corsIssue.length) {
+    if (issues.corsIssue?.length) {
       items.push(this.getCorsRow(issues.corsIssue));
     }
-    if (issues.deprecationIssue.length) {
+    if (issues.deprecationIssue?.length) {
       items.push(this.getDeprecationRow(issues.deprecationIssue));
     }
-    if (issues.federatedAuthRequestIssue.length) {
+    if (issues.federatedAuthRequestIssue?.length) {
       items.push(this.getFederatedAuthRequestRow(issues.federatedAuthRequestIssue,
-        artifacts.URL.finalUrl));
+        artifacts.URL.finalDisplayedUrl));
     }
-    if (issues.genericIssue.length) {
-      items.push(this.getGenericRow(issues.genericIssue, artifacts.URL.finalUrl));
+    if (issues.genericIssue?.length) {
+      items.push(this.getGenericRow(issues.genericIssue, artifacts.URL.finalDisplayedUrl));
     }
-    if (issues.lowTextContrastIssue.length) {
-      items.push(this.getLowTextContrastRow(issues.lowTextContrastIssue, artifacts.URL.finalUrl));
+    if (issues.lowTextContrastIssue?.length) {
+      items.push(this.getLowTextContrastRow(issues.lowTextContrastIssue, artifacts.URL.finalDisplayedUrl));
     }
-    if (issues.navigatorUserAgentIssue.length) {
+    if (issues.navigatorUserAgentIssue?.length) {
       items.push(this.getNavigatorUserAgentRow(issues.navigatorUserAgentIssue));
     }
-    if (issues.quirksModeIssue.length) {
+    if (issues.quirksModeIssue?.length) {
       items.push(this.getQuirksModeRow(issues.quirksModeIssue));
     }
-    if (issues.sharedArrayBufferIssue.length) {
+    if (issues.sharedArrayBufferIssue?.length) {
       items.push(this.getSharedArrayBufferRow(issues.sharedArrayBufferIssue));
-    }
-    if (issues.twaQualityEnforcement.length) {
-      items.push(this.getTwaQualityEnforcementRow(issues.twaQualityEnforcement));
     }
     return {
       score: items.length > 0 ? 0 : 1,
