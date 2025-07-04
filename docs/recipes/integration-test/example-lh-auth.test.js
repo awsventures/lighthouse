@@ -83,7 +83,7 @@ describe('my site', () => {
     await new Promise(resolve => server.listen(SERVER_PORT, resolve));
     browser = await puppeteer.launch({
       args: [`--remote-debugging-port=${CHROME_DEBUG_PORT}`],
-      headless: !process.env.DEBUG,
+      headless: process.env.DEBUG ? false : 'new',
       slowMo: process.env.DEBUG ? 50 : undefined,
       executablePath: getChromePath(),
     });
@@ -107,7 +107,7 @@ describe('my site', () => {
     it('lighthouse', async () => {
       await page.goto(ORIGIN);
       const lhr = await runLighthouse(page.url());
-      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.9);
+      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.8);
     });
 
     it('login form should exist', async () => {
@@ -124,7 +124,7 @@ describe('my site', () => {
       await login(page, ORIGIN);
       await page.goto(ORIGIN);
       const lhr = await runLighthouse(page.url());
-      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.9);
+      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.8);
     });
 
     it('login form should not exist', async () => {
@@ -149,7 +149,7 @@ describe('my site', () => {
       await login(page, ORIGIN);
       await page.goto(`${ORIGIN}/dashboard`);
       const lhr = await runLighthouse(page.url());
-      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.9);
+      expect(lhr).toHaveLighthouseScoreGreaterThanOrEqual('seo', 0.8);
     });
 
     it('has secrets', async () => {

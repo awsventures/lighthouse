@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @fileoverview This audit highlights JavaScript modules that appear to be duplicated across
+ * all resources, either within the same bundle or between different bundles.
+ */
+
 /** @typedef {import('./byte-efficiency-audit.js').ByteEfficiencyProduct} ByteEfficiencyProduct */
 /** @typedef {LH.Audit.ByteEfficiencyItem & {source: string, subItems: {type: 'subitems', items: SubItem[]}}} Item */
 /** @typedef {{url: string, sourceTransferBytes?: number}} SubItem */
@@ -11,7 +16,7 @@
 import {ByteEfficiencyAudit} from './byte-efficiency-audit.js';
 import {ModuleDuplication} from '../../computed/module-duplication.js';
 import * as i18n from '../../lib/i18n/i18n.js';
-import {getRequestForScript} from '../../lib/script-helpers.js';
+import {estimateCompressionRatioForContent} from '../../lib/script-helpers.js';
 
 const UIStrings = {
   /** Imperative title of a Lighthouse audit that tells the user to remove duplicate JavaScript from their code. This is displayed in a list of audit titles that Lighthouse generates. */
@@ -25,7 +30,7 @@ const UIStrings = {
 
 const str_ = i18n.createIcuMessageFn(import.meta.url, UIStrings);
 
-const IGNORE_THRESHOLD_IN_BYTES = 1024;
+const IGNORE_THRESHOLD_IN_BYTES = 1024 * 10;
 
 /**
  * @param {string} haystack
@@ -48,7 +53,7 @@ class DuplicatedJavascript extends ByteEfficiencyAudit {
       description: str_(UIStrings.description),
       scoreDisplayMode: ByteEfficiencyAudit.SCORING_MODES.METRIC_SAVINGS,
       guidanceLevel: 2,
-      requiredArtifacts: ['devtoolsLogs', 'traces', 'SourceMaps', 'Scripts',
+      requiredArtifacts: ['DevtoolsLog', 'Trace', 'SourceMaps', 'Scripts',
         'GatherContext', 'URL'],
     };
   }
@@ -104,22 +109,10 @@ class DuplicatedJavascript extends ByteEfficiencyAudit {
   }
 
   /**
-   *
-   * @param {LH.Artifacts.NetworkRequest|undefined} networkRecord
-   * @param {number} contentLength
-   */
-  static _estimateTransferRatio(networkRecord, contentLength) {
-    const transferSize =
-      ByteEfficiencyAudit.estimateTransferSize(networkRecord, contentLength, 'Script');
-    return transferSize / contentLength;
-  }
-
-  /**
-   * This audit highlights JavaScript modules that appear to be duplicated across all resources,
-   * either within the same bundle or between different bundles. Each details item returned is
-   * a module with subItems for each resource that includes it. The wastedBytes for the details
-   * item is the number of bytes occupied by the sum of all but the largest copy of the module.
-   * wastedBytesByUrl attributes the cost of the bytes to a specific resource, for use by lantern.
+   * Each details item returned is a module with subItems for each resource that
+   * includes it. The wastedBytes for the details item is the number of bytes
+   * occupied by the sum of all but the largest copy of the module. wastedBytesByUrl
+   * attributes the cost of the bytes to a specific resource, for use by lantern.
    * @param {LH.Artifacts} artifacts
    * @param {Array<LH.Artifacts.NetworkRequest>} networkRecords
    * @param {LH.Audit.Context} context
@@ -132,7 +125,7 @@ class DuplicatedJavascript extends ByteEfficiencyAudit {
       await DuplicatedJavascript._getDuplicationGroupedByNodeModules(artifacts, context);
 
     /** @type {Map<string, number>} */
-    const transferRatioByUrl = new Map();
+    const compressionRatioByUrl = new Map();
 
     /** @type {Item[]} */
     const items = [];
@@ -145,10 +138,10 @@ class DuplicatedJavascript extends ByteEfficiencyAudit {
     for (const [source, sourceDatas] of duplication.entries()) {
       // One copy of this module is treated as the canonical version - the rest will have
       // non-zero `wastedBytes`. In the case of all copies being the same version, all sizes are
-      // equal and the selection doesn't matter. When the copies are different versions, it does
-      // matter. Ideally the newest version would be the canonical copy, but version information
-      // is not present. Instead, size is used as a heuristic for latest version. This makes the
-      // audit conserative in its estimation.
+      // equal and the selection doesn't matter (ignoring compression ratios). When the copies are
+      // different versions, it does matter. Ideally the newest version would be the canonical
+      // copy, but version information is not present. Instead, size is used as a heuristic for
+      // latest version. This makes the audit conserative in its estimation.
 
       /** @type {SubItem[]} */
       const subItems = [];
@@ -159,27 +152,9 @@ class DuplicatedJavascript extends ByteEfficiencyAudit {
         const scriptId = sourceData.scriptId;
         const script = artifacts.Scripts.find(script => script.scriptId === scriptId);
         const url = script?.url || '';
-
-        /** @type {number|undefined} */
-        let transferRatio = transferRatioByUrl.get(url);
-        if (transferRatio === undefined) {
-          if (!script || script.length === undefined) {
-            // This should never happen because we found the wasted bytes from bundles, which required contents in a Script.
-            continue;
-          }
-
-          const contentLength = script.length;
-          const networkRecord = getRequestForScript(networkRecords, script);
-          transferRatio = DuplicatedJavascript._estimateTransferRatio(networkRecord, contentLength);
-          transferRatioByUrl.set(url, transferRatio);
-        }
-
-        if (transferRatio === undefined) {
-          // Shouldn't happen for above reasons.
-          continue;
-        }
-
-        const transferSize = Math.round(sourceData.resourceSize * transferRatio);
+        const compressionRatio = estimateCompressionRatioForContent(
+          compressionRatioByUrl, url, artifacts, networkRecords);
+        const transferSize = Math.round(sourceData.resourceSize * compressionRatio);
 
         subItems.push({
           url,

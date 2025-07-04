@@ -5,7 +5,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* eslint-disable no-console */
 
 import fs from 'fs';
 import path from 'path';
@@ -119,7 +118,7 @@ function addPluginCategory(sampleLhr) {
 }
 
 /**
- * Drops the LHR to only one, solo category (performance), and removes budgets.
+ * Drops the LHR to only one, solo category (performance).
  * @param {LH.Result} sampleLhr
  */
 function tweakLhrForPsi(sampleLhr) {
@@ -128,11 +127,6 @@ function tweakLhrForPsi(sampleLhr) {
   clone.categories = {
     'performance': clone.categories.performance,
   };
-  // no budgets in PSI
-  delete clone.audits['performance-budget'];
-  clone.categories.performance.auditRefs = clone.categories.performance.auditRefs.filter(audit => {
-    return !audit.id.endsWith('-budget');
-  });
   return clone;
 }
 
@@ -161,8 +155,8 @@ async function generateErrorLHR() {
     GatherContext: {gatherMode: 'navigation'},
     Timing: [],
     PageLoadError: null,
-    devtoolsLogs: {},
-    traces: {},
+    DevtoolsLog: [],
+    Trace: {traceEvents: []},
   };
 
   // Save artifacts to disk then run `lighthouse -A` with them.

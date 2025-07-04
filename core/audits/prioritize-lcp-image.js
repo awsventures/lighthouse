@@ -37,8 +37,9 @@ class PrioritizeLcpImage extends Audit {
       title: str_(UIStrings.title),
       description: str_(UIStrings.description),
       supportedModes: ['navigation'],
-      guidanceLevel: 3,
-      requiredArtifacts: ['traces', 'devtoolsLogs', 'GatherContext', 'URL', 'TraceElements'],
+      guidanceLevel: 4,
+      requiredArtifacts: ['Trace', 'DevtoolsLog', 'GatherContext', 'URL', 'TraceElements',
+        'SourceMaps'],
       scoreDisplayMode: Audit.SCORING_MODES.METRIC_SAVINGS,
     };
   }
@@ -69,7 +70,7 @@ class PrioritizeLcpImage extends Audit {
   static findLCPNode(graph, lcpRecord) {
     for (const {node} of graph.traverseGenerator()) {
       if (node.type !== 'network') continue;
-      if (node.record.requestId === lcpRecord.requestId) {
+      if (node.request.requestId === lcpRecord.requestId) {
         return node;
       }
     }
@@ -194,8 +195,8 @@ class PrioritizeLcpImage extends Audit {
     modifiedLCPNode.removeAllDependencies();
     modifiedLCPNode.addDependency(mainDocumentNode);
 
-    const simulationBeforeChanges = simulator.simulate(graph, {flexibleOrdering: true});
-    const simulationAfterChanges = simulator.simulate(modifiedGraph, {flexibleOrdering: true});
+    const simulationBeforeChanges = simulator.simulate(graph);
+    const simulationAfterChanges = simulator.simulate(modifiedGraph);
     const lcpTimingsBefore = simulationBeforeChanges.nodeTimings.get(lcpNode);
     if (!lcpTimingsBefore) throw new Error('Impossible - node timings should never be undefined');
     const lcpTimingsAfter = simulationAfterChanges.nodeTimings.get(modifiedLCPNode);
@@ -222,7 +223,7 @@ class PrioritizeLcpImage extends Audit {
       wastedMs,
       results: [{
         node: Audit.makeNodeItem(lcpElement.node),
-        url: lcpNode.record.url,
+        url: lcpNode.request.url,
         wastedMs,
       }],
     };
@@ -235,11 +236,12 @@ class PrioritizeLcpImage extends Audit {
    */
   static async audit(artifacts, context) {
     const gatherContext = artifacts.GatherContext;
-    const trace = artifacts.traces[PrioritizeLcpImage.DEFAULT_PASS];
-    const devtoolsLog = artifacts.devtoolsLogs[PrioritizeLcpImage.DEFAULT_PASS];
-    const URL = artifacts.URL;
+    const trace = artifacts.Trace;
+    const devtoolsLog = artifacts.DevtoolsLog;
+    const {URL, SourceMaps} = artifacts;
     const settings = context.settings;
-    const metricData = {trace, devtoolsLog, gatherContext, settings, URL};
+    const metricData =
+      {trace, devtoolsLog, gatherContext, settings, URL, SourceMaps, simulator: null};
     const lcpElement = artifacts.TraceElements
       .find(element => element.traceEventType === 'largest-contentful-paint');
 

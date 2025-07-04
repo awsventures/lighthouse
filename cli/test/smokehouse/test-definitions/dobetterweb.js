@@ -156,63 +156,6 @@ const expectations = {
         property: 'og:description',
       },
     ],
-    TagsBlockingFirstPaint: [
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
-        },
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
-        },
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
-        },
-
-      },
-      {
-        tag: {
-          tagName: 'LINK',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-          mediaChanges: [
-            {
-              href: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-              media: 'not-matching',
-              matches: false,
-            },
-            {
-              href: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
-              media: 'screen',
-              matches: true,
-            },
-          ],
-        },
-      },
-      {
-        tag: {
-          tagName: 'SCRIPT',
-          url: 'http://localhost:10200/dobetterweb/dbw_tester.js',
-        },
-      },
-      {
-        tag: {
-          tagName: 'SCRIPT',
-          url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
-        },
-      },
-    ],
-    GlobalListeners: [{
-      type: 'unload',
-      scriptId: /^\d+$/,
-      lineNumber: '>300',
-      columnNumber: '>30',
-    }],
     DevtoolsLog: {
       _includes: [
         // Ensure we are getting async call stacks.
@@ -325,26 +268,26 @@ const expectations = {
       },
       'render-blocking-resources': {
         score: '<1',
-        numericValue: '>100',
+        numericValue: '>=50',
         details: {
           items: [
             {
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
-            },
-            {
-              url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
-            },
-            {
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
+              url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
             },
             {
               url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=3000&capped',
             },
             {
+              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=2200',
+            },
+            {
               url: 'http://localhost:10200/dobetterweb/dbw_tester.js',
             },
             {
-              url: 'http://localhost:10200/dobetterweb/fcp-delayer.js?delay=5000',
+              url: 'http://localhost:10200/dobetterweb/unknown404.css?delay=200',
+            },
+            {
+              url: 'http://localhost:10200/dobetterweb/dbw_tester.css?delay=100',
             },
           ],
         },
@@ -367,7 +310,8 @@ const expectations = {
         details: {
           items: [
             {
-              value: /Synchronous `XMLHttpRequest` on the main thread is deprecated/,
+              // For some reason CDT .json locale files strip out backticks. LH doesn't.
+              value: /Synchronous `?XMLHttpRequest`? on the main thread is deprecated/,
               source: {
                 type: 'source-location',
                 url: 'http://localhost:10200/dobetterweb/dbw_tester.html',
@@ -378,8 +322,7 @@ const expectations = {
               subItems: undefined,
             },
             {
-              _minChromiumVersion: '121',
-              value: 'UnloadHandler',
+              value: /Unload event listeners are deprecated and will be removed/,
               source: {
                 type: 'source-location',
                 url: 'http://localhost:10200/dobetterweb/dbw_tester.html',
@@ -447,8 +390,8 @@ const expectations = {
         },
       },
       'dom-size': {
-        score: null,
-        numericValue: 153,
+        score: 1,
+        numericValue: 151,
         details: {
           items: [
             {
@@ -456,7 +399,7 @@ const expectations = {
               value: {
                 type: 'numeric',
                 granularity: 1,
-                value: 153,
+                value: 151,
               },
             },
             {
@@ -477,20 +420,6 @@ const expectations = {
               node: {snippet: '<div id="shadow-root-container">'},
             },
           ],
-        },
-      },
-      'no-unload-listeners': {
-        score: 0,
-        details: {
-          items: [{
-            source: {
-              type: 'source-location',
-              url: 'http://localhost:10200/dobetterweb/dbw_tester.html',
-              urlProvider: 'network',
-              line: '>300',
-              column: '>30',
-            },
-          }],
         },
       },
       'bf-cache': {
@@ -552,16 +481,27 @@ const expectations = {
       },
       'network-rtt': {
         details: {
-          items: [
-            {origin: 'http://localhost:10200', rtt: '>0'},
-          ],
+          items: {
+            _includes: [
+              {origin: 'http://localhost:10200', rtt: '>0'},
+              {origin: 'http://[::1]:10503', rtt: '>0'},
+            ],
+            _excludes: [{}],
+          },
         },
       },
       'network-server-latency': {
         details: {
-          items: [
-            {origin: 'http://localhost:10200', serverResponseTime: '>0'},
-          ],
+          items: {
+            _includes: [
+              {origin: 'http://localhost:10200', serverResponseTime: '>0'},
+              // The response time estimate is based on just 1 request which can force Lighthouse
+              // to report a response time of 0 sometimes.
+              // https://github.com/GoogleChrome/lighthouse/pull/15729#issuecomment-1877869991
+              {origin: 'http://[::1]:10503', serverResponseTime: '>=0'},
+            ],
+            _excludes: [{}],
+          },
         },
       },
       'metrics': {
@@ -596,6 +536,21 @@ const expectations = {
               ],
             },
           ],
+        },
+      },
+      'third-party-cookies': {
+        score: 0,
+        displayValue: '1 cookie found',
+        details: {
+          items: [
+            {name: 'Foo', url: /^http:\/\/\[::1\]:10503\/dobetterweb\/empty_module\.js/},
+          ],
+        },
+      },
+      'viewport': {
+        score: 1,
+        details: {
+          viewportContent: 'width=device-width, initial-scale=1, minimum-scale=1',
         },
       },
     },

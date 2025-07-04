@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* global globalThis */
-
 import {Buffer} from 'buffer';
 
 import log from 'lighthouse-logger';
@@ -47,22 +45,25 @@ async function getPageFromConnection(connection) {
   const pptrConnection = new PptrConnection(mainTargetInfo.url, transport);
 
   const browser = await CdpBrowser._create(
-    'chrome',
     pptrConnection,
     [] /* contextIds */,
-    false /* ignoreHTTPSErrors */,
-    undefined /* defaultViewport */,
-    undefined /* process */,
-    undefined /* closeCallback */,
-    // @ts-expect-error internal property
-    targetInfo => targetInfo._targetId === mainTargetInfo.targetId
+    false /* ignoreHTTPSErrors */
   );
 
-  const pages = await browser.pages();
-  const page = pages.find(p => p.mainFrame()._id === frameTree.frame.id);
-  if (!page) throw new Error('Could not find relevant puppeteer page');
-
-  // @ts-expect-error Page has a slightly different type when importing the browser module directly.
+  // We should be able to find the relevant page instantly, but just in case
+  // the relevant tab target comes a bit delayed, check every time a new
+  // target is seen.
+  const targetPromise = browser.waitForTarget(async (target) => {
+    const page = await target.page();
+    if (page && page.mainFrame()._id === frameTree.frame.id) return true;
+    return false;
+  });
+  const page = await Promise.race([
+    targetPromise.then(target => target.page()),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Could not find relevant puppeteer page')), 5000);
+    }),
+  ]);
   return page;
 }
 
@@ -73,11 +74,11 @@ async function getPageFromConnection(connection) {
  * @param {any} connection
  * @param {string} url
  * @param {LH.Flags} flags Lighthouse flags
- * @param {{lrDevice?: 'desktop'|'mobile', categoryIDs?: Array<string>, logAssets: boolean, configOverride?: LH.Config}} lrOpts Options coming from Lightrider
+ * @param {{lrDevice?: 'desktop'|'mobile', categoryIDs?: Array<string>, logAssets: boolean, configOverride?: LH.Config, ignoreStatusCode?: boolean}} lrOpts Options coming from Lightrider
  * @return {Promise<string>}
  */
 async function runLighthouseInLR(connection, url, flags, lrOpts) {
-  const {lrDevice, categoryIDs, logAssets, configOverride} = lrOpts;
+  const {lrDevice, categoryIDs, logAssets, configOverride, ignoreStatusCode} = lrOpts;
 
   // Certain fixes need to kick in under LR, see https://github.com/GoogleChrome/lighthouse/issues/5839
   global.isLightrider = true;
@@ -92,8 +93,9 @@ async function runLighthouseInLR(connection, url, flags, lrOpts) {
     config = configOverride;
   } else {
     config = lrDevice === 'desktop' ? LR_PRESETS.desktop : LR_PRESETS.mobile;
+    config.settings = config.settings || {};
+    config.settings.ignoreStatusCode = ignoreStatusCode;
     if (categoryIDs) {
-      config.settings = config.settings || {};
       config.settings.onlyCategories = categoryIDs;
     }
   }

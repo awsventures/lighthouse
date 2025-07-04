@@ -8,7 +8,7 @@ import {NetworkRecorder} from '../../core/lib/network-recorder.js';
 import {networkRecordsToDevtoolsLog} from './network-records-to-devtools-log.js';
 import {readJson} from './test-utils.js';
 
-const lcpDevtoolsLog = readJson('./fixtures/traces/lcp-m78.devtools.log.json', import.meta);
+const lcpDevtoolsLog = readJson('./fixtures/artifacts/paul/devtoolslog.json', import.meta);
 
 describe('networkRecordsToDevtoolsLog', () => {
   it('should generate the four messages per request', () => {
@@ -57,7 +57,12 @@ describe('networkRecordsToDevtoolsLog', () => {
     const roundTripLogs = networkRecordsToDevtoolsLog(records, {skipVerification: true});
     const roundTripRecords = NetworkRecorder.recordsFromLogs(roundTripLogs);
 
-    expect(roundTripRecords).toEqual(records);
+    // First compare element-wise, as doing all at once results in too verbose an error message.
+    const len = Math.min(roundTripRecords.length, records.length);
+    for (let i = 0; i < len; i++) {
+      expect(roundTripRecords[i]).toEqual(records[i]);
+    }
+    expect(roundTripRecords.length).toEqual(records.length);
   });
 
   it('should roundtrip fake network records multiple times', () => {

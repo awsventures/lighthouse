@@ -61,6 +61,10 @@ enum LighthouseError {
   NOT_HTML = 21;
   // The trace did not contain a ResourceSendRequest event.
   NO_RESOURCE_REQUEST = 22;
+  // Used when any Chrome interstitial error prevents page load.
+  CHROME_INTERSTITIAL_ERROR = 23;
+  // The page has crashed and will no longer respond to 99% of CDP commmands.
+  TARGET_CRASHED = 24;
 }
 
 // The overarching Lighthouse Response object (LHR)
@@ -206,10 +210,15 @@ message LighthouseResult {
     }
 
     // Screen emulation properties (width, height, dpr, mobile viewport) to
+    //
     // apply or an object of `{disabled: true}` if Lighthouse should avoid
+    //
     // applying screen emulation. If either emulation is applied outside of
+    //
     // Lighthouse, or it's being run on a mobile device, it typically should be
+    //
     // set to disabled. For desktop, we recommend applying consistent desktop
+    //
     // screen emulation.
     ScreenEmulation screen_emulation = 9;
 
@@ -292,6 +301,9 @@ message LighthouseResult {
 
     // Precomputed lantern estimates to use instead of observed analysis.
     google.protobuf.Struct precomputed_lantern_data = 34;
+
+    // Indicating whether Lighthouse should ignore status codes.
+    bool ignore_status_code = 10;
   }
 
   // The settings that were used to run this audit
@@ -363,7 +375,7 @@ message LhrCategory {
   string title = 2;
 
   // A description of what this category is about (e.g. these help you validate
-  // your PWA).
+  // your seo).
   string description = 3;
 
   // The overall score of the category, the weighted average of all its audits,
@@ -518,6 +530,9 @@ message AuditResult {
 
   // An audit's guidance level.
   google.protobuf.DoubleValue guidanceLevel = 16;
+
+  // Audits that this audit replaces.
+  google.protobuf.Value replacesAudits = 17;
 }
 
 // Message containing the i18n data for the LHR - Version 1
@@ -771,6 +786,26 @@ message I18n {
     // Descriptive label that this analysis considers a snapshot of the page at
     // a single point in time
     string runtime_analysis_window_snapshot = 66;
+
+    // Message for PWA deprecation.
+    string pwa_removal_message = 67;
+
+    // Option in a dropdown menu that toggles the performance audits between
+    // new insights from RPP and legacy perf audits.
+    string dropdown_insights_toggle = 68;
+
+    // Notice about upcoming planned changes to Lighthouse, to replace most
+    // performance audits with a new set of "insight" audits.
+    string insights_notice = 69;
+
+    // Text for a button to try out "Performance insight audits", a new set of
+    // performance advice that will replace performance audits.
+    string try_insights = 70;
+
+    // Text for a button for going back to normal "Performance audits", instead of
+    // using the new set of performance insight audits that will replace performance
+    // audits.
+    string go_back_to_audits = 71;
   }
 
   // The message holding all formatted strings used in the renderer.

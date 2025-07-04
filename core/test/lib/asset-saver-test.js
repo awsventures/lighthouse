@@ -50,7 +50,7 @@ describe('asset-saver helper', () => {
       const traceEventsWithoutExtrasOnDisk = traceEventsOnDisk.slice(0, traceEvents.length);
       const traceEventsFake = traceEventsOnDisk.slice(traceEvents.length);
       assertTraceEventsEqual(traceEventsWithoutExtrasOnDisk, traceEvents);
-      assert.equal(traceEventsFake.length, 18);
+      assert.equal(traceEventsFake.length, 16);
       fs.unlinkSync(traceFilename);
     });
 
@@ -318,6 +318,15 @@ describe('asset-saver helper', () => {
       expect(roundTripArtifacts).toStrictEqual(originalArtifacts);
     });
 
+    it('round trips saved artifacts (compressed)', async () => {
+      const artifactsPath = moduleDir + '/../results/artifacts/';
+      const originalArtifacts = await assetSaver.loadArtifacts(artifactsPath);
+
+      await assetSaver.saveArtifacts(originalArtifacts, outputPath, {gzip: true});
+      const roundTripArtifacts = await assetSaver.loadArtifacts(outputPath);
+      expect(roundTripArtifacts).toStrictEqual(originalArtifacts);
+    });
+
     it('round trips saved flow artifacts', async () => {
       const flowArtifactsPath = moduleDir + '/../fixtures/user-flows/artifacts/';
       const originalArtifacts = await assetSaver.loadFlowArtifacts(flowArtifactsPath);
@@ -402,21 +411,21 @@ describe('asset-saver helper', () => {
         {cause: new Error('the cause')});
 
       const artifacts = {
-        ScriptElements: lhError,
+        Scripts: lhError,
       };
 
       await assetSaver.saveArtifacts(artifacts, outputPath);
       const roundTripArtifacts = await assetSaver.loadArtifacts(outputPath);
       expect(roundTripArtifacts).toStrictEqual(artifacts);
 
-      expect(roundTripArtifacts.ScriptElements).toBeInstanceOf(LighthouseError);
-      expect(roundTripArtifacts.ScriptElements.code).toEqual('PROTOCOL_TIMEOUT');
-      expect(roundTripArtifacts.ScriptElements.protocolMethod).toEqual(protocolMethod);
-      expect(roundTripArtifacts.ScriptElements.cause).toBeInstanceOf(Error);
-      expect(roundTripArtifacts.ScriptElements.cause.message).toEqual('the cause');
-      expect(roundTripArtifacts.ScriptElements.stack).toMatch(
+      expect(roundTripArtifacts.Scripts).toBeInstanceOf(LighthouseError);
+      expect(roundTripArtifacts.Scripts.code).toEqual('PROTOCOL_TIMEOUT');
+      expect(roundTripArtifacts.Scripts.protocolMethod).toEqual(protocolMethod);
+      expect(roundTripArtifacts.Scripts.cause).toBeInstanceOf(Error);
+      expect(roundTripArtifacts.Scripts.cause.message).toEqual('the cause');
+      expect(roundTripArtifacts.Scripts.stack).toMatch(
           /^LighthouseError: PROTOCOL_TIMEOUT.*test[\\/]lib[\\/]asset-saver-test\.js/s);
-      expect(roundTripArtifacts.ScriptElements.friendlyMessage)
+      expect(roundTripArtifacts.Scripts.friendlyMessage)
         .toBeDisplayString(/\(Method: Page\.getFastness\)/);
     });
 
@@ -465,7 +474,7 @@ describe('asset-saver helper', () => {
     });
   });
 
-  describe('elideAuditErrorStacks', () => {
+  describe('elideLhrErrorStacks', () => {
     it('elides correctly', async () => {
       const lhr = JSON.parse(JSON.stringify(dbwResults));
       lhr.audits['bf-cache'].errorStack = `Error: LighthouseError: ERRORED_REQUIRED_ARTIFACT
@@ -476,7 +485,7 @@ describe('asset-saver helper', () => {
       at async runLighthouse (${LH_ROOT}/cli/run.js:250:8)
       at async ${LH_ROOT}/cli/index.js:10:1
       at <anonymous>:1:1`;
-      assetSaver.elideAuditErrorStacks(lhr);
+      assetSaver.elideLhrErrorStacks(lhr);
 
       // eslint-disable-next-line max-len
       expect(lhr.audits['bf-cache'].errorStack).toEqual(`Error: LighthouseError: ERRORED_REQUIRED_ARTIFACT

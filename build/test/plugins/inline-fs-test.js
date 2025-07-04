@@ -342,17 +342,18 @@ describeSkipOnWindows('inline-fs', () => {
       it('warns and skips when missing encoding', async () => {
         const content = `const myTextContent = fs.readFileSync('${tmpPath}');`;
         const result = await inlineFs(content, filepath);
-        expect(result).toEqual({
-          code: null,
-          warnings: [{
-            text: 'fs.readFileSync() must have two arguments',
-            location: {
-              file: filepath,
-              line: 1,
-              column: 22,
-            },
-          }],
+
+        // These expectations are deconstructed because the warning text can have slight
+        // variations depending on the node version (18 vs 20).
+        // TODO: Use a simpler expectation when support for Node 18 is dropped.
+        expect(result.code).toBeNull();
+        expect(result.warnings).toHaveLength(1);
+        expect(result.warnings[0].location).toEqual({
+          file: filepath,
+          line: 1,
+          column: 22,
         });
+        expect(result.warnings[0].text).toMatch(/^fs\.readFileSync\(\) must have two arguments/);
       });
 
       it('warns and skips on unsupported encoding', async () => {
@@ -414,10 +415,8 @@ describeSkipOnWindows('inline-fs', () => {
 
       it('handles methods chained on fs.readdirSync result', async () => {
         fs.writeFileSync(tmpPath, 'text');
-        // eslint-disable-next-line max-len
         const content = `const files = fs.readdirSync('${tmpDir}').map(f => \`metrics/\${f}\`)`;
         const result = await inlineFs(content, filepath);
-        // eslint-disable-next-line max-len
         expect(result).toEqual({
           code: 'const files = ["test.txt"].map(f => `metrics/${f}`)',
           warnings: [],
@@ -429,7 +428,6 @@ describeSkipOnWindows('inline-fs', () => {
         // eslint-disable-next-line max-len
         const content = `const files = [...fs.readdirSync('${tmpDir}'), ...fs.readdirSync('${tmpDir}').map(f => \`metrics/\${f}\`)]`;
         const result = await inlineFs(content, filepath);
-        // eslint-disable-next-line max-len
         expect(result).toEqual({
           code: 'const files = [...["test.txt"], ...["test.txt"].map(f => `metrics/${f}`)]',
           warnings: [],

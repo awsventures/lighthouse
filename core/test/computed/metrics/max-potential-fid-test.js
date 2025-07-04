@@ -4,13 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import assert from 'assert/strict';
-
 import {MaxPotentialFID} from '../../../computed/metrics/max-potential-fid.js';
 import {getURLArtifactFromDevtoolsLog, readJson} from '../../test-utils.js';
 
-const trace = readJson('../../fixtures/traces/progressive-app-m60.json', import.meta);
-const devtoolsLog = readJson('../../fixtures/traces/progressive-app-m60.devtools.log.json', import.meta);
+const trace = readJson('../../fixtures/artifacts/progressive-app/trace.json', import.meta);
+const devtoolsLog = readJson('../../fixtures/artifacts/progressive-app/devtoolslog.json', import.meta);
 
 const URL = getURLArtifactFromDevtoolsLog(devtoolsLog);
 
@@ -20,8 +18,8 @@ describe('Metrics: Max Potential FID', () => {
   it('should compute a simulated value', async () => {
     const settings = {throttlingMethod: 'simulate'};
     const context = {settings, computedCache: new Map()};
-    const result = await MaxPotentialFID.request({trace, devtoolsLog, gatherContext, settings, URL},
-      context);
+    const result = await MaxPotentialFID.request({
+      trace, devtoolsLog, gatherContext, settings, URL, SourceMaps: [], simulator: null}, context);
 
     expect({
       timing: Math.round(result.timing),
@@ -33,9 +31,13 @@ describe('Metrics: Max Potential FID', () => {
   it('should compute an observed value', async () => {
     const settings = {throttlingMethod: 'provided'};
     const context = {settings, computedCache: new Map()};
-    const result = await MaxPotentialFID.request({trace, devtoolsLog, gatherContext, settings, URL},
-      context);
+    const result = await MaxPotentialFID.request({
+      trace, devtoolsLog, gatherContext, settings, URL, SourceMaps: [], simulator: null}, context);
 
-    assert.equal(Math.round(result.timing), 198);
+    await expect(result).toMatchInlineSnapshot(`
+Object {
+  "timing": 16,
+}
+`);
   });
 });

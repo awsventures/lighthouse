@@ -19,15 +19,12 @@ describe('Performance: prioritize-lcp-image audit', () => {
   const mockArtifacts = (networkRecords, URL) => {
     return {
       GatherContext: {gatherMode: 'navigation'},
-      traces: {
-        [PrioritizeLcpImage.DEFAULT_PASS]: createTestTrace({
-          traceEnd: 6000,
-          largestContentfulPaint: 4500,
-        }),
-      },
-      devtoolsLogs: {
-        [PrioritizeLcpImage.DEFAULT_PASS]: networkRecordsToDevtoolsLog(networkRecords),
-      },
+      Trace: createTestTrace({
+        traceEnd: 6000,
+        largestContentfulPaint: 4500,
+        networkRecords,
+      }),
+      DevtoolsLog: networkRecordsToDevtoolsLog(networkRecords),
       URL,
       TraceElements: [
         {
@@ -38,6 +35,7 @@ describe('Performance: prioritize-lcp-image audit', () => {
           type: 'image',
         },
       ],
+      SourceMaps: [],
     };
   };
 
@@ -57,6 +55,7 @@ describe('Performance: prioritize-lcp-image audit', () => {
         networkRequestTime: 0,
         networkEndTime: 500,
         timing: {receiveHeadersEnd: 500},
+        responseHeadersTransferSize: 400,
         transferSize: 400,
         url: requestedUrl,
         frameId: 'ROOT_FRAME',
@@ -133,7 +132,7 @@ describe('Performance: prioritize-lcp-image audit', () => {
     const artifacts = mockArtifacts(networkRecords, URL);
 
     // Make image paint event not apply to our node.
-    const imagePaintEvent = artifacts.traces.defaultPass
+    const imagePaintEvent = artifacts.Trace
         .traceEvents.find(e => e.name === 'LargestImagePaint::Candidate');
     imagePaintEvent.args.data.DOMNodeId = 1729;
 
@@ -318,6 +317,7 @@ describe('Performance: prioritize-lcp-image audit', () => {
     // Redirect image request to newly added request.
     const redirectSource = networkRecords.at(-1);
     redirectSource.networkEndTime = 2500;
+    redirectSource.responseHeadersTransferSize = 708;
     redirectSource.transferSize = 708;
     redirectSource.resourceType = undefined;
     networkRecords.push({

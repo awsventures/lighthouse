@@ -41,8 +41,9 @@ describe('ExecutionContext', () => {
   it('should clear context on frame navigations', async () => {
     const executionContext = new ExecutionContext(sessionMock);
 
-    const frameListener = sessionMock.on.mock.calls.find(call => call[0] === 'Page.frameNavigated');
-    expect(frameListener).toBeDefined();
+    const frameListener = sessionMock.on.mock.calls
+      .find(call => call[0] === 'Page.frameNavigated') ?? [];
+    expect(frameListener[1]).toBeDefined();
 
     await forceNewContextId(executionContext, 42);
     expect(executionContext.getContextId()).toEqual(42);
@@ -54,8 +55,8 @@ describe('ExecutionContext', () => {
     const executionContext = new ExecutionContext(sessionMock);
 
     const executionDestroyed = sessionMock.on.mock.calls
-      .find(call => call[0] === 'Runtime.executionContextDestroyed');
-    expect(executionDestroyed).toBeDefined();
+      .find(call => call[0] === 'Runtime.executionContextDestroyed') ?? [];
+    expect(executionDestroyed[1]).toBeDefined();
 
     await forceNewContextId(executionContext, 42);
     expect(executionContext.getContextId()).toEqual(42);
@@ -113,6 +114,27 @@ describe('.evaluateAsync', () => {
     sessionMock.sendCommand.mockRejectedValue(new Error('Timeout'));
 
     const evaluatePromise = makePromiseInspectable(executionContext.evaluateAsync('1 + 1'));
+
+    await flushAllTimersAndMicrotasks();
+    expect(setNextProtocolTimeout).toHaveBeenCalledWith(expectedTimeout);
+    expect(evaluatePromise).toBeDone();
+    await expect(evaluatePromise).rejects.toBeTruthy();
+  });
+
+  it('uses the specific timeout given (isolation)', async () => {
+    const expectedTimeout = 5000;
+    const setNextProtocolTimeout = sessionMock.setNextProtocolTimeout = fnAny();
+    sessionMock.hasNextProtocolTimeout = fnAny().mockReturnValue(true);
+    sessionMock.getNextProtocolTimeout = fnAny().mockReturnValue(expectedTimeout);
+    sessionMock.sendCommand
+      .mockResponse('Page.enable')
+      .mockResponse('Runtime.enable')
+      .mockResponse('Page.getFrameTree', {frameTree: {frame: {id: '1337'}}})
+      .mockResponse('Page.createIsolatedWorld', {executionContextId: 1});
+
+    const evaluatePromise = makePromiseInspectable(executionContext.evaluateAsync('1 + 1', {
+      useIsolation: true,
+    }));
 
     await flushAllTimersAndMicrotasks();
     expect(setNextProtocolTimeout).toHaveBeenCalledWith(expectedTimeout);

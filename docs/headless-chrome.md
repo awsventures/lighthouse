@@ -5,7 +5,7 @@
 Setup:
 
 ```sh
-# Lighthouse requires Node 18 LTS (18.x) or later.
+# Lighthouse requires Node 18.20 or later.
 curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash - &&\
 sudo apt-get install -y nodejs npm
 
@@ -101,8 +101,10 @@ const chromeLauncher = require('chrome-launcher');
 function launchChromeAndRunLighthouse(url, flags = {}, config = null) {
   return chromeLauncher.launch(flags).then(chrome => {
     flags.port = chrome.port;
-    return lighthouse(url, flags, config).then(results =>
-      chrome.kill().then(() => results));
+    return lighthouse(url, flags, config).then(results => {
+      chrome.kill();
+      return results;
+    }
   });
 }
 

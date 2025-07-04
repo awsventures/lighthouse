@@ -14,7 +14,6 @@ import {taskGroups} from '../lib/tracehouse/task-groups.js';
 import {TraceProcessor} from '../lib/tracehouse/trace-processor.js';
 import {getExecutionTimingsByURL} from '../lib/tracehouse/task-summary.js';
 import InteractionToNextPaint from './metrics/interaction-to-next-paint.js';
-import {LighthouseError} from '../lib/lh-error.js';
 
 /** @typedef {import('../computed/metrics/responsiveness.js').EventTimingEvent} EventTimingEvent */
 /** @typedef {import('../lib/tracehouse/main-thread-tasks.js').TaskNode} TaskNode */
@@ -31,7 +30,7 @@ const UIStrings = {
   /** Label for a column in a data table; entries will be information on the time that the browser is delayed before responding to user input. Ideally fits within a ~40 character limit. */
   inputDelay: 'Input delay',
   /** Label for a column in a data table; entries will be information on the time taken by code processing user input that delays a response to the user. Ideally fits within a ~40 character limit. */
-  processingTime: 'Processing time',
+  processingDuration: 'Processing duration',
   /** Label for a column in a data table; entries will be information on the time that the browser is delayed before presenting a response to user input on screen. Ideally fits within a ~40 character limit. */
   presentationDelay: 'Presentation delay',
   /**
@@ -61,7 +60,7 @@ class WorkDuringInteraction extends Audit {
       scoreDisplayMode: Audit.SCORING_MODES.METRIC_SAVINGS,
       supportedModes: ['timespan'],
       guidanceLevel: 1,
-      requiredArtifacts: ['traces', 'devtoolsLogs', 'TraceElements'],
+      requiredArtifacts: ['Trace', 'DevtoolsLog', 'TraceElements'],
     };
   }
 
@@ -116,7 +115,7 @@ class WorkDuringInteraction extends Audit {
     const endTs = startTs + interactionData.duration * 1000;
     return {
       inputDelay: {startTs, endTs: processingStartTs},
-      processingTime: {startTs: processingStartTs, endTs: processingEndTs},
+      processingDuration: {startTs: processingStartTs, endTs: processingEndTs},
       presentationDelay: {startTs: processingEndTs, endTs},
     };
   }
@@ -232,7 +231,7 @@ class WorkDuringInteraction extends Audit {
       };
     }
 
-    const trace = artifacts.traces[WorkDuringInteraction.DEFAULT_PASS];
+    const trace = artifacts.Trace;
     const metricData = {trace, settings};
     const interactionEvent = await Responsiveness.request(metricData, context);
     // If no interaction, diagnostic audit is n/a.
@@ -243,20 +242,13 @@ class WorkDuringInteraction extends Audit {
         metricSavings: {INP: 0},
       };
     }
-    // TODO: remove workaround once 103.0.5052.0 is sufficiently released.
-    if (interactionEvent.name === 'FallbackTiming') {
-      throw new LighthouseError(
-        LighthouseError.errors.UNSUPPORTED_OLD_CHROME,
-        {featureName: 'detailed EventTiming trace events'}
-      );
-    }
 
     const auditDetailsItems = [];
 
     const traceElementItem = WorkDuringInteraction.getTraceElementTable(artifacts.TraceElements);
     if (traceElementItem) auditDetailsItems.push(traceElementItem);
 
-    const devtoolsLog = artifacts.devtoolsLogs[WorkDuringInteraction.DEFAULT_PASS];
+    const devtoolsLog = artifacts.DevtoolsLog;
     // Network records will usually be empty for timespans.
     const networkRecords = await NetworkRecords.request(devtoolsLog, context);
     const processedTrace = await ProcessedTrace.request(trace, context);

@@ -4,20 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import fs from 'fs';
 import {pathToFileURL} from 'url';
 
 import * as td from 'testdouble';
-import jestMock from 'jest-mock';
 
 import {LH_ROOT} from '../../../shared/root.js';
-import {readJson} from '../../../core/test/test-utils.js';
+import {fnAny, readJson} from '../../../core/test/test-utils.js';
 
-const mockRunLighthouse = jestMock.fn();
-const mockGetFlags = jestMock.fn();
-const mockAskPermission = jestMock.fn();
-const mockSentryInit = jestMock.fn();
-const mockLoggerSetLevel = jestMock.fn();
+const mockRunLighthouse = fnAny();
+const mockGetFlags = fnAny();
+const mockAskPermission = fnAny();
+const mockSentryInit = fnAny();
+const mockLoggerSetLevel = fnAny();
 
 /** @type {import('../../bin.js')} */
 let bin;
@@ -111,17 +109,6 @@ describe('CLI bin', function() {
       await bin.begin();
 
       expect(getRunLighthouseArgs()[2]).toEqual(actualConfig);
-    });
-  });
-
-  describe('budget', () => {
-    it('should load the config from the path', async () => {
-      const budgetPath = `${LH_ROOT}/core/test/fixtures/simple-budget.json`;
-      cliFlags = {...cliFlags, budgetPath};
-      const budgetFile = JSON.parse(fs.readFileSync(budgetPath, 'utf-8'));
-      await bin.begin();
-
-      expect(getRunLighthouseArgs()[1].budgets).toEqual(budgetFile);
     });
   });
 

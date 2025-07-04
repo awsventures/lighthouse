@@ -36,6 +36,9 @@ describe('ReportRenderer', () => {
 
     const {window} = new jsdom.JSDOM();
     global.self = window;
+    global.HTMLElement = window.HTMLElement;
+    global.CustomEvent = window.CustomEvent;
+    global.requestAnimationFrame = fn => fn();
 
     const dom = new DOM(window.document);
     const detailsRenderer = new DetailsRenderer(dom);
@@ -50,6 +53,8 @@ describe('ReportRenderer', () => {
   after(() => {
     global.self = undefined;
     global.matchMedia = undefined;
+    global.requestAnimationFrame = undefined;
+    global.CustomEvent = undefined;
   });
 
   describe('renderReport', () => {
@@ -59,8 +64,7 @@ describe('ReportRenderer', () => {
       assert.ok(output.querySelector('.lh-header-container'), 'has a header');
       assert.ok(output.querySelector('.lh-report'), 'has report body');
       // 3 sets of gauges - one in sticky header, one in scores header, and one in each section.
-      // eslint-disable-next-line max-len
-      assert.equal(output.querySelectorAll('.lh-gauge__wrapper, .lh-gauge--pwa__wrapper, .lh-exp-gauge__wrapper').length,
+      assert.equal(output.querySelectorAll('.lh-gauge__wrapper, .lh-exp-gauge__wrapper').length,
           Object.keys(sampleResults.categories).length * 3, 'renders category gauges');
     });
 
@@ -86,7 +90,7 @@ describe('ReportRenderer', () => {
       assert.ok(header.querySelector('.lh-scores-container'), 'contains score container');
     });
 
-    it('renders score gauges in this order: default, pwa, plugins', () => {
+    it('renders score gauges in this order: default, plugins', () => {
       const sampleResultsCopy = JSON.parse(JSON.stringify(sampleResults));
       sampleResultsCopy.categories['lighthouse-plugin-someplugin'] = {
         id: 'lighthouse-plugin-someplugin',
@@ -97,23 +101,20 @@ describe('ReportRenderer', () => {
       const container = renderer._dom.document().body;
       const output = renderer.renderReport(sampleResultsCopy, container);
 
-      function isPWAGauge(el) {
-        return el.querySelector('.lh-gauge__label').textContent === 'PWA';
+      const defaults = ['Performance', 'Accessibility', 'Best Practices', 'SEO'];
+
+      function isDefaultGauge(el) {
+        return defaults.includes(el.querySelector('.lh-gauge__label').textContent);
       }
       function isPluginGauge(el) {
         return el.querySelector('.lh-gauge__label').textContent === 'Some Plugin';
       }
 
-      const indexOfPwaGauge = Array.from(output
-        .querySelectorAll('.lh-scores-header > a[class*="lh-gauge"]')).findIndex(isPWAGauge);
-
       const indexOfPluginGauge = Array.from(output
         .querySelectorAll('.lh-scores-header > a[class*="lh-gauge"]')).findIndex(isPluginGauge);
 
       const scoresHeaderElem = output.querySelector('.lh-scores-header');
-      assert.equal(scoresHeaderElem.children.length - 2, indexOfPwaGauge);
       assert.equal(scoresHeaderElem.children.length - 1, indexOfPluginGauge);
-      assert(indexOfPluginGauge > indexOfPwaGauge);
 
       for (let i = 0; i < scoresHeaderElem.children.length; i++) {
         const gauge = scoresHeaderElem.children[i];
@@ -121,8 +122,8 @@ describe('ReportRenderer', () => {
         assert.ok(gauge.classList.contains('lh-gauge__wrapper'));
         if (i >= indexOfPluginGauge) {
           assert.ok(isPluginGauge(gauge));
-        } else if (i >= indexOfPwaGauge) {
-          assert.ok(isPWAGauge(gauge));
+        } else {
+          assert.ok(isDefaultGauge(gauge));
         }
       }
     });
@@ -147,12 +148,10 @@ describe('ReportRenderer', () => {
         '#index=0&anchor=accessibility',
         '#index=0&anchor=best-practices',
         '#index=0&anchor=seo',
-        '#index=0&anchor=pwa',
         '#index=0&anchor=performance',
         '#index=0&anchor=accessibility',
         '#index=0&anchor=best-practices',
         '#index=0&anchor=seo',
-        '#index=0&anchor=pwa',
       ]);
     });
 
@@ -171,8 +170,8 @@ describe('ReportRenderer', () => {
       const pluginGaugeCount =
         scoresHeaderElem.querySelectorAll('.lh-gauge__wrapper--plugin').length;
 
-      // 5 core categories + the 1 plugin.
-      assert.equal(6, gaugeCount);
+      // 4 core categories + the 1 plugin.
+      assert.equal(5, gaugeCount);
       assert.equal(1, pluginGaugeCount);
     });
 
@@ -284,7 +283,7 @@ describe('ReportRenderer', () => {
       .filter(url => DOCS_ORIGINS.includes(url.origin))
       .map(url => url.searchParams.get('utm_medium'));
 
-    assert.ok(utmChannels.length > 100);
+    assert.ok(utmChannels.length >= 75);
     for (const utmChannel of utmChannels) {
       assert.strictEqual(utmChannel, lhrChannel);
     }
@@ -293,11 +292,21 @@ describe('ReportRenderer', () => {
   it('renders `not_applicable` audits as `notApplicable`', () => {
     const clonedSampleResult = JSON.parse(JSON.stringify(sampleResultsOrig));
 
+    const hiddenAuditIds = new Set();
+    for (const category of Object.values(clonedSampleResult.categories)) {
+      for (const auditRef of category.auditRefs) {
+        // TODO: Remove insights condition when insights become the default
+        if (auditRef.group === 'hidden' || auditRef.group === 'insights') {
+          hiddenAuditIds.add(auditRef.id);
+        }
+      }
+    }
+
     let notApplicableCount = 0;
     Object.values(clonedSampleResult.audits).forEach(audit => {
-      // The performance-budget audit is omitted from the DOM when it is not applicable
-      if (audit.scoreDisplayMode === 'notApplicable' && audit.id !== 'performance-budget') {
+      if (audit.scoreDisplayMode === 'notApplicable' && !hiddenAuditIds.has(audit.id)) {
         notApplicableCount++;
+        // Switch to old-style `not_applicable` to test fallback behavior.
         audit.scoreDisplayMode = 'not_applicable';
       }
     });
@@ -306,8 +315,11 @@ describe('ReportRenderer', () => {
 
     const container = renderer._dom.document().body;
     const reportElement = renderer.renderReport(sampleResults, container);
-    const notApplicableElementCount = reportElement
-      .querySelectorAll('.lh-audit--notapplicable').length;
+    const notApplicableElements = [...reportElement.querySelectorAll('.lh-audit--notapplicable')];
+    // Audits can be included multiple times in the report, so dedupe by id.
+    const uniqueNotApplicableElements = new Set(notApplicableElements.map(el => el.id));
+    const notApplicableElementCount = uniqueNotApplicableElements.size;
+
     assert.strictEqual(notApplicableCount, notApplicableElementCount);
   });
 });

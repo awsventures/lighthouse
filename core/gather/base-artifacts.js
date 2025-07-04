@@ -5,10 +5,11 @@
  */
 
 import log from 'lighthouse-logger';
-import isDeepEqual from 'lodash/isEqual.js';
+import {isEqual} from 'lodash-es';
 
 import {
   getBrowserVersion, getBenchmarkIndex, getEnvironmentWarnings,
+  getDevicePixelRatio,
 } from './driver/environment.js';
 
 /**
@@ -19,7 +20,8 @@ import {
  */
 async function getBaseArtifacts(resolvedConfig, driver, context) {
   const BenchmarkIndex = await getBenchmarkIndex(driver.executionContext);
-  const {userAgent} = await getBrowserVersion(driver.defaultSession);
+  const {userAgent, product} = await getBrowserVersion(driver.defaultSession);
+  const HostDPR = await getDevicePixelRatio(driver.executionContext);
 
   return {
     // Meta artifacts.
@@ -29,9 +31,11 @@ async function getBaseArtifacts(resolvedConfig, driver, context) {
     settings: resolvedConfig.settings,
     // Environment artifacts that can always be computed.
     BenchmarkIndex,
+    HostDPR,
     HostUserAgent: userAgent,
     HostFormFactor: userAgent.includes('Android') || userAgent.includes('Mobile') ?
       'mobile' : 'desktop',
+    HostProduct: product,
     // Contextual artifacts whose collection changes based on gather mode.
     URL: {
       finalDisplayedUrl: '',
@@ -51,7 +55,7 @@ function deduplicateWarnings(warnings) {
   const unique = [];
 
   for (const warning of warnings) {
-    if (unique.some(existing => isDeepEqual(warning, existing))) continue;
+    if (unique.some(existing => isEqual(warning, existing))) continue;
     unique.push(warning);
   }
 

@@ -8,7 +8,7 @@ import fs from 'fs';
 import assert from 'assert/strict';
 import {createRequire} from 'module';
 
-import {computeCSSTokenLength, computeJSTokenLength} from '../../lib/minification-estimator.js'; // eslint-disable-line max-len
+import {computeCSSTokenLength, computeJSTokenLength} from '../../lib/minification-estimator.js';
 import {LH_ROOT} from '../../../shared/root.js';
 
 const require = createRequire(import.meta.url);
@@ -261,6 +261,12 @@ describe('minification estimator', () => {
       // Handles braces outside template literal (2 spaces + 4 spaces)
       const outerBraces = '{  foo:{bar:`baz ${bam.get({}    )}`}}';
       expect(computeJSTokenLength(outerBraces)).toEqual(outerBraces.length - 6);
+    });
+
+    it('should handle else keyword followed by a regex pattern in scripts', () => {
+      const script = '} else/^hello!/.test(n)?(d=element.parseFromString("Hi/Hello there!")';
+      const minified = '}else/^hello!/.test(n)?(d=element.parseFromString("Hi/Hello there!")';
+      expect(computeJSTokenLength(script)).toEqual(minified.length);
     });
   });
 });

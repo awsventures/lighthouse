@@ -28,6 +28,8 @@ declare module Renderer {
     omitTopbar?: boolean;
     /** Prevent injection of report styles. Set to true if these styles are already included by the environment. */
     omitGlobalStyles?: boolean;
+    /** Ensure the report occupies the entire viewport. This option should be enabled if the report represents the entire page content (i.e. standalone HTML & viewer app) */
+    occupyEntireViewport?: boolean;
     /**
      * Convert report anchor links to a different format.
      * Flow report uses this to convert `#seo` to `#index=0&anchor=seo`.
@@ -45,6 +47,11 @@ declare module Renderer {
      * data, which can be gotten from the artifacts.
      */
     onViewTrace?: () => void;
+    /**
+     * Called when the performance audits/insights are swapped out.
+     * TODO(v13): remove
+     */
+    _onSwapHook?: () => void;
   }
 }
 

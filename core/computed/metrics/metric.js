@@ -34,6 +34,8 @@ class Metric {
       gatherContext: data.gatherContext,
       settings: data.settings,
       URL: data.URL,
+      SourceMaps: data.SourceMaps,
+      simulator: null,
     };
   }
 
@@ -61,9 +63,7 @@ class Metric {
    * @return {Promise<LH.Artifacts.LanternMetric|LH.Artifacts.Metric>}
    */
   static async compute_(data, context) {
-    // TODO: remove this fallback when lighthouse-pub-ads plugin can update.
-    const gatherContext = data.gatherContext || {gatherMode: 'navigation'};
-    const {trace, devtoolsLog, settings} = data;
+    const {trace, devtoolsLog, settings, gatherContext} = data;
     if (!trace || !devtoolsLog || !settings) {
       throw new Error('Did not provide necessary metric computation data');
     }

@@ -100,12 +100,21 @@ async function evaluateInSession(session, fn, deps) {
  * @return {Promise<R>}
  */
 async function waitForFunction(session, fn, deps) {
-  // eslint-disable-next-line no-constant-condition
+  let iterations = 0;
   while (true) {
     try {
       return await evaluateInSession(session, fn, deps);
-    } catch {
+    } catch (err) {
+      // Random transient errors are common when first booting up.
+      // Only surface errors if this fails 10 times in a row (~5s)
+      if (iterations > 10) {
+        console.error(`Error waiting for function (#${iterations}):`);
+        console.error(err);
+        console.error('Retrying...');
+      }
       await new Promise(r => setTimeout(r, 500));
+    } finally {
+      ++iterations;
     }
   }
 }
@@ -161,7 +170,7 @@ async function waitForLighthouseReady() {
 
   const panel = LighthousePanel.LighthousePanel.instance();
 
-  const button = panel.contentElement.querySelector('button');
+  const button = panel.contentElement.querySelector('.vbox.flex-auto').shadowRoot.querySelector('devtools-button,button');
   if (button.disabled) throw new Error('Start button disabled');
 
   const targetManager = TargetManager.TargetManager.instance();
@@ -213,7 +222,7 @@ async function runLighthouse() {
   // In CI clicking the start button just once is flaky and can cause a timeout.
   // Therefore, keep clicking the button until we detect that the run started.
   const intervalHandle = setInterval(() => {
-    const button = panel.contentElement.querySelector('button');
+    const button = panel.contentElement.querySelector('.vbox.flex-auto').shadowRoot.querySelector('devtools-button,button');
     button.click();
   }, 100);
 
@@ -231,7 +240,7 @@ async function enableDevToolsThrottling() {
   const {LighthousePanel} = await import('./panels/lighthouse/lighthouse.js');
   const panel = LighthousePanel.LighthousePanel.instance();
 
-  const toolbarRoot = panel.contentElement.querySelector('.lighthouse-settings-pane .toolbar').shadowRoot;
+  const toolbarRoot = panel.contentElement.querySelector('.lighthouse-settings-pane devtools-toolbar');
   toolbarRoot.querySelector('option[value="devtools"]').selected = true;
   toolbarRoot.querySelector('select').dispatchEvent(new Event('change'));
 }
@@ -384,7 +393,6 @@ async function main() {
   // Create output directory.
   if (fs.existsSync(outputDir)) {
     if (fs.readdirSync(outputDir).length) {
-      // eslint-disable-next-line no-console
       console.warn('WARNING: Output directory is not empty.');
     }
   } else {
