@@ -26,7 +26,9 @@ function processForProto(lhr) {
 
   // Drop these fields as we've omitted them from the proto for simplicity
   if (reportJson.configSettings) {
+    // @ts-expect-error Removing non-optional field.
     delete reportJson.configSettings.auditMode;
+    // @ts-expect-error Removing non-optional field.
     delete reportJson.configSettings.gatherMode;
   }
 
