@@ -222,6 +222,10 @@ message LighthouseResult {
     // screen emulation.
     ScreenEmulation screen_emulation = 9;
 
+
+    // Indicating whether Lighthouse should ignore status codes.
+    bool ignore_status_code = 10;
+
     // The type(s) of report output to be produced.
     // Can be a string of 'json' | 'html' | 'csv'
     // Or an array of those strings
@@ -249,10 +253,9 @@ message LighthouseResult {
     // User Agent string to apply, `false` to not change the host's UA string,
     // or `true` to use Lighthouse's default UA string.
     string emulated_user_agent = 17;
-    // Flag indicating the run should only audit.
-    bool audit_mode = 18;
-    // Flag indicating the run should only gather.
-    bool gather_mode = 19;
+
+    // audit_mode and gather_mode are excluded from the proto, as they are boolean/string and niche enough that we don't want to deal with them.
+
     // Flag indicating that the browser storage should not be reset for the
     // audit.
     bool disable_storage_reset = 20;
@@ -301,9 +304,6 @@ message LighthouseResult {
 
     // Precomputed lantern estimates to use instead of observed analysis.
     google.protobuf.Struct precomputed_lantern_data = 34;
-
-    // Indicating whether Lighthouse should ignore status codes.
-    bool ignore_status_code = 10;
   }
 
   // The settings that were used to run this audit
