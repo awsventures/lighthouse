@@ -24,6 +24,12 @@ function processForProto(lhr) {
   /** @type {LH.Result} */
   const reportJson = JSON.parse(JSON.stringify(lhr));
 
+  // Drop these fields as we've omitted them from the proto for simplicity
+  if (reportJson.configSettings) {
+    delete reportJson.configSettings.auditMode;
+    delete reportJson.configSettings.gatherMode;
+  }
+
   // Remove runtimeError if it is NO_ERROR
   if (reportJson.runtimeError && reportJson.runtimeError.code === 'NO_ERROR') {
     delete reportJson.runtimeError;
