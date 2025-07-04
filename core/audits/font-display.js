@@ -50,7 +50,7 @@ class FontDisplay extends Audit {
       description: str_(UIStrings.description),
       supportedModes: ['navigation'],
       guidanceLevel: 3,
-      requiredArtifacts: ['devtoolsLogs', 'CSSUsage', 'URL'],
+      requiredArtifacts: ['DevtoolsLog', 'Stylesheets', 'URL'],
       scoreDisplayMode: Audit.SCORING_MODES.METRIC_SAVINGS,
     };
   }
@@ -67,7 +67,7 @@ class FontDisplay extends Audit {
     const failingURLs = new Set();
 
     // Go through all the stylesheets to find all @font-face declarations
-    for (const stylesheet of artifacts.CSSUsage.stylesheets) {
+    for (const stylesheet of artifacts.Stylesheets) {
       // Eliminate newlines so we can more easily scan through with a regex
       const newlinesStripped = stylesheet.content.replace(/(\r|\n)+/g, ' ');
       // Find the @font-faces
@@ -143,7 +143,7 @@ class FontDisplay extends Audit {
    * @return {Promise<LH.Audit.Product>}
    */
   static async audit(artifacts, context) {
-    const devtoolsLogs = artifacts.devtoolsLogs[this.DEFAULT_PASS];
+    const devtoolsLogs = artifacts.DevtoolsLog;
     const networkRecords = await NetworkRecords.request(devtoolsLogs, context);
     const {passingURLs, failingURLs} =
       FontDisplay.findFontDisplayDeclarations(artifacts, PASSING_FONT_DISPLAY_REGEX);

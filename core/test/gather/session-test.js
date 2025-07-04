@@ -6,7 +6,7 @@
 
 import {EventEmitter} from 'events';
 
-import {CdpCDPSession} from 'puppeteer-core/lib/cjs/puppeteer/cdp/CDPSession.js';
+import {CdpCDPSession} from 'puppeteer-core/lib/esm/puppeteer/cdp/CdpSession.js';
 
 import {ProtocolSession} from '../../gather/session.js';
 import {
@@ -48,10 +48,13 @@ describe('ProtocolSession', () => {
   let puppeteerSession;
   /** @type {ProtocolSession} */
   let session;
+  let rawSend = fnAny();
 
   beforeEach(() => {
+    rawSend = fnAny().mockResolvedValue(Promise.resolve());
+
     // @ts-expect-error - Individual mock functions are applied as necessary.
-    puppeteerSession = new CdpCDPSession({_rawSend: fnAny(), send: fnAny()}, '', 'root');
+    puppeteerSession = new CdpCDPSession({_rawSend: rawSend}, '', 'root');
     session = new ProtocolSession(puppeteerSession);
   });
 
@@ -101,6 +104,7 @@ describe('ProtocolSession', () => {
   describe('.dispose', () => {
     it('should detach from the session', async () => {
       const detach = fnAny();
+      detach.mockResolvedValue(undefined);
       class MockCdpSession extends EventEmitter {
         constructor() {
           super();
@@ -127,7 +131,7 @@ describe('ProtocolSession', () => {
 
       const result = await session.sendCommand('Page.navigate', {url: 'foo'});
       expect(result).toEqual(123);
-      expect(send).toHaveBeenCalledWith('Page.navigate', {url: 'foo'});
+      expect(send).toHaveBeenCalledWith('Page.navigate', {url: 'foo'}, {timeout: 30050});
     });
 
     it('times out a request by default', async () => {
@@ -186,6 +190,12 @@ describe('ProtocolSession', () => {
       expect(resultPromise).toBeDone();
       expect(await resultPromise).toBe('result');
     });
+
+    it('rejects on error from protocol', async () => {
+      rawSend.mockRejectedValue(new Error('Url is not valid'));
+      const resultPromise = session.sendCommand('Page.navigate', {url: ''});
+      await expect(resultPromise).rejects.toThrow('Url is not valid');
+    });
   });
 
   describe('.has/get/setNextProtocolTimeout', () => {
@@ -215,6 +225,18 @@ describe('ProtocolSession', () => {
 
       expect(session.hasNextProtocolTimeout()).toBe(false);
       expect(session.getNextProtocolTimeout()).toBe(DEFAULT_TIMEOUT);
+    });
+
+    it('should handle infinite timeout', () => {
+      session.setNextProtocolTimeout(Infinity);
+      expect(session.hasNextProtocolTimeout()).toBe(true);
+      expect(session.getNextProtocolTimeout()).toBe(2147483597);
+    });
+
+    it('should handle extremely large (but not infinite) timeout', () => {
+      session.setNextProtocolTimeout(2 ** 40);
+      expect(session.hasNextProtocolTimeout()).toBe(true);
+      expect(session.getNextProtocolTimeout()).toBe(2147483597);
     });
   });
 });

@@ -10,9 +10,7 @@
  * Supports skipping and modifiying expectations to match the environment.
  */
 
-/* eslint-disable no-console */
-
-import cloneDeep from 'lodash/cloneDeep.js';
+import {cloneDeep} from 'lodash-es';
 
 import smokeTests from '../core-tests.js';
 import {runSmokehouse, getShardedDefinitions} from '../smokehouse.js';

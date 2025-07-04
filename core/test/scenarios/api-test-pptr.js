@@ -11,6 +11,8 @@ import {createTestState, getAuditsBreakdown} from './pptr-test-utils.js';
 import {LH_ROOT} from '../../../shared/root.js';
 import {TargetManager} from '../../gather/driver/target-manager.js';
 
+const doubleRaf = 'new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))';
+
 describe('Individual modes API', function() {
   // eslint-disable-next-line no-invalid-this
   this.timeout(120_000);
@@ -76,7 +78,7 @@ describe('Individual modes API', function() {
       await setupTestPage();
 
       // Wait long enough to ensure a paint after button interaction.
-      await state.page.waitForTimeout(200);
+      await state.page.evaluate(doubleRaf);
 
       const result = await run.endTimespan();
       if (!result) throw new Error('Lighthouse failed to produce a result');
@@ -102,10 +104,16 @@ describe('Individual modes API', function() {
       } = getAuditsBreakdown(lhr);
       expect(auditResults.map(audit => audit.id).sort()).toMatchSnapshot();
 
-      expect(notApplicableAudits.map(audit => audit.id).sort()).toMatchSnapshot();
+      expect(
+        notApplicableAudits
+          // TODO(16323): Flaky in CI.
+          .filter(audit => audit.id !== 'viewport-insight')
+          .map(audit => audit.id)
+          .sort()
+      ).toMatchSnapshot();
       expect(notApplicableAudits.map(audit => audit.id)).not.toContain('total-blocking-time');
 
-      expect(erroredAudits).toHaveLength(0);
+      expect(erroredAudits).toStrictEqual([]);
       expect(failedAudits.map(audit => audit.id)).toContain('errors-in-console');
 
       const errorsInConsole = lhr.audits['errors-in-console'];
@@ -139,7 +147,7 @@ describe('Individual modes API', function() {
       await page.waitForSelector('input');
 
       // Wait long enough to ensure a paint after button interaction.
-      await page.waitForTimeout(200);
+      await page.evaluate(doubleRaf);
 
       const result = await run.endTimespan();
 
@@ -160,9 +168,8 @@ describe('Individual modes API', function() {
       expect(erroredAudits).toHaveLength(0);
     });
 
-    // TODO: unskip https://github.com/GoogleChrome/lighthouse/issues/15654
     // eslint-disable-next-line max-len
-    it.skip('should know target type of network requests from frames created before timespan', async () => {
+    it('should know target type of network requests from frames created before timespan', async () => {
       const spy = jestMock.spyOn(TargetManager.prototype, '_onExecutionContextCreated');
       state.server.baseDir = `${LH_ROOT}/cli/test/fixtures`;
       const {page, serverBaseUrl} = state;
@@ -188,6 +195,13 @@ describe('Individual modes API', function() {
         .map((r) => ({url: r.url, sessionTargetType: r.sessionTargetType}))
         // @ts-expect-error
         .sort((a, b) => a.url.localeCompare(b.url));
+
+      // These results can change depending on which Chrome version is used.
+      // The expectation here is tuned for Chromium 133.0.6876.0
+      //
+      // Using an older Chromium version can change which target the root
+      // worker requests are associated with.
+      // (also depends on --disable-field-trial-config for older versions)
       expect(networkRequests).toMatchInlineSnapshot(`
 Array [
   Object {
@@ -203,11 +217,11 @@ Array [
     "url": "http://localhost:10200/simple-script.js?importScripts",
   },
   Object {
-    "sessionTargetType": "page",
+    "sessionTargetType": "worker",
     "url": "http://localhost:10200/simple-worker.js",
   },
   Object {
-    "sessionTargetType": "page",
+    "sessionTargetType": "worker",
     "url": "http://localhost:10200/simple-worker.mjs",
   },
   Object {
@@ -223,11 +237,11 @@ Array [
     "url": "http://localhost:10503/simple-script.js?importScripts",
   },
   Object {
-    "sessionTargetType": "iframe",
+    "sessionTargetType": "worker",
     "url": "http://localhost:10503/simple-worker.js",
   },
   Object {
-    "sessionTargetType": "iframe",
+    "sessionTargetType": "worker",
     "url": "http://localhost:10503/simple-worker.mjs",
   },
 ]

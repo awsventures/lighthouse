@@ -15,12 +15,8 @@ const noInteractionTrace = readJson('../fixtures/traces/jumpy-cls-m90.json', imp
 describe('Interaction to Next Paint', () => {
   function getTestData() {
     const artifacts = {
-      traces: {
-        [WorkDuringInteraction.DEFAULT_PASS]: interactionTrace,
-      },
-      devtoolsLogs: {
-        [WorkDuringInteraction.DEFAULT_PASS]: [],
-      },
+      Trace: interactionTrace,
+      DevtoolsLog: [],
       TraceElements: [{
         traceEventType: 'responsiveness',
         node: {
@@ -173,8 +169,8 @@ Object {
           },
           Object {
             "phase": Object {
-              "formattedDefault": "Processing time",
-              "i18nId": "core/audits/work-during-interaction.js | processingTime",
+              "formattedDefault": "Processing duration",
+              "i18nId": "core/audits/work-during-interaction.js | processingDuration",
               "values": undefined,
             },
             "subItems": Object {
@@ -237,7 +233,7 @@ Object {
             "endTs": 633282934296,
             "startTs": 633282649296,
           },
-          "processingTime": Object {
+          "processingDuration": Object {
             "endTs": 633282649296,
             "startTs": 633282608296,
           },
@@ -266,12 +262,12 @@ Object {
 
   it('evaluates INP correctly', async () => {
     const {artifacts, context} = getTestData();
-    const clonedTrace = JSON.parse(JSON.stringify(artifacts.traces.defaultPass));
+    const clonedTrace = JSON.parse(JSON.stringify(artifacts.Trace));
     for (let i = 0; i < clonedTrace.traceEvents.length; i++) {
       if (clonedTrace.traceEvents[i].name !== 'EventTiming') continue;
       clonedTrace.traceEvents[i].args = {};
     }
-    artifacts.traces.defaultPass = clonedTrace;
+    artifacts.Trace = clonedTrace;
 
     await expect(WorkDuringInteraction.audit(artifacts, context))
       .rejects.toThrow('UNSUPPORTED_OLD_CHROME');
@@ -290,7 +286,7 @@ Object {
 
   it('is not applicable if no interactions occurred in trace', async () => {
     const {artifacts, context} = getTestData();
-    artifacts.traces[WorkDuringInteraction.DEFAULT_PASS] = noInteractionTrace;
+    artifacts.Trace = noInteractionTrace;
     const result = await WorkDuringInteraction.audit(artifacts, context);
     expect(result).toMatchObject({
       score: null,

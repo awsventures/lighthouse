@@ -21,7 +21,7 @@ import esMain from 'es-main';
 
 import {LH_ROOT} from '../../../shared/root.js';
 
-const HEADER_SAFELIST = new Set(['x-robots-tag', 'link', 'content-security-policy']);
+const HEADER_SAFELIST = new Set(['x-robots-tag', 'link', 'content-security-policy', 'set-cookie']);
 const wasInvokedDirectly = esMain(import.meta);
 
 class Server {
@@ -108,6 +108,12 @@ class Server {
         'Access-Control-Allow-Origin': '*',
         'Origin-Agent-Cluster': '?1',
       };
+
+      // This enables an important test in Smokerider - to check if the universal fetcher
+      // used for robots.txt (and source maps) is able to fetch freely while ignoring CORS constraints.
+      if (filePath === '/robots.txt') {
+        delete headers['Access-Control-Allow-Origin'];
+      }
 
       const contentType = mime.lookup(filePath);
       const charset = mime.lookup(contentType);

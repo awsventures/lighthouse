@@ -4,11 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** @typedef {import('./dependency-graph/base-node.js').Node} Node */
-/** @typedef {import('./dependency-graph/simulator/simulator.js').CompleteNodeTiming} CompleteNodeTiming */
+/** @typedef {import('./lantern/lantern.js').Simulation.CompleteNodeTiming} CompleteNodeTiming */
 
 /**
- * @param {Map<Node, CompleteNodeTiming>} nodeTimings
+ * @param {Map<LH.Gatherer.Simulation.GraphNode, CompleteNodeTiming>} nodeTimings
  * @return {LH.Trace}
  */
 function convertNodeTimingsToTrace(nodeTimings) {
@@ -32,9 +31,11 @@ function convertNodeTimingsToTrace(nodeTimings) {
       // Represent all CPU work that was bundled in a task as an EvaluateScript event
       traceEvents.push(...createFakeTaskEvents(node, timing));
     } else {
+      /** @type {LH.Artifacts.NetworkRequest} */
+      const record = node.rawRequest;
       // Ignore data URIs as they don't really add much value
-      if (/^data/.test(node.record.url)) continue;
-      traceEvents.push(...createFakeNetworkEvents(requestId, node.record, timing));
+      if (/^data/.test(record.url)) continue;
+      traceEvents.push(...createFakeNetworkEvents(requestId, record, timing));
       requestId++;
     }
   }
@@ -114,7 +115,7 @@ function convertNodeTimingsToTrace(nodeTimings) {
       const ts = eventTs + (event.ts - nestedBaseTs) * multiplier;
       const newEvent = {...event, ...{pid: baseEvent.pid, tid: baseEvent.tid}, ts};
       if (event.dur) newEvent.dur = event.dur * multiplier;
-      events.push(newEvent);
+      events.push(/** @type {LH.TraceEvent} */(newEvent));
     }
 
     return events;
@@ -152,7 +153,7 @@ function convertNodeTimingsToTrace(nodeTimings) {
 
     // 0ms requests get super-messed up rendering
     // Use 0.3ms instead so they're still hoverable, https://github.com/GoogleChrome/lighthouse/pull/5350#discussion_r194563201
-    let {startTime, endTime} = timing; // eslint-disable-line prefer-const
+    let {startTime, endTime} = timing;
     if (startTime === endTime) endTime += 0.3;
 
     const requestData = {requestId: requestId.toString(), frame};
@@ -253,7 +254,6 @@ export default {
     'unlabeled',
     // These node timings should be nearly identical to the ones produced for Interactive
     'optimisticSpeedIndex',
-    'optimisticFlexSpeedIndex',
     'pessimisticSpeedIndex',
   ],
   convertNodeTimingsToTrace,

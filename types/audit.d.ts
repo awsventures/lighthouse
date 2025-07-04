@@ -20,6 +20,14 @@ declare module Audit {
   export type ScoreDisplayModes = AuditResult.ScoreDisplayModes;
   export type MetricSavings = AuditResult.MetricSavings;
 
+  export type ProductMetricSavings = {
+    FCP?: number;
+    LCP?: number;
+    TBT?: number;
+    CLS?: number;
+    INP?: number;
+  };
+
   type Context = Util.Immutable<{
     /** audit options */
     options: Record<string, any>;
@@ -56,6 +64,8 @@ declare module Audit {
     supportedModes?: Gatherer.GatherMode[],
     /** A number indicating how much guidance Lighthouse provides to solve the problem in this audit on a 1-3 scale. Higher means more guidance. */
     guidanceLevel?: number;
+    /** A list of audit ids that this audit replaces. Used to ensure the report does not render the audits in this list at the same time as the audit which contains the list. */
+    replacesAudits?: string[];
   }
 
   interface ByteEfficiencyItem extends AuditDetails.OpportunityItem {
@@ -87,7 +97,7 @@ declare module Audit {
     /** If an audit encounters unusual execution circumstances, strings can be put in this optional array to add top-level warnings to the LHR. */
     runWarnings?: Array<IcuMessage>;
     /** Estimates of how much this audit affects various performance metrics. Values will be in the unit of the respective metrics. */
-    metricSavings?: MetricSavings;
+    metricSavings?: ProductMetricSavings;
     /** Score details including p10 and median for calculating an audit's log-normal score. */
     scoringOptions?: ScoreOptions;
     /** A string identifying how the score should be interpreted for display. Overrides audit meta `scoreDisplayMode` if defined. */
@@ -109,16 +119,6 @@ declare module Audit {
 
   /** Type returned by Audit.audit(). Only score is required.  */
   type Product = NonNumericProduct | NumericProduct;
-
-  type MultiCheckAuditP1 = Partial<Record<Artifacts.ManifestValueCheckID, boolean>>;
-  type MultiCheckAuditP2 = Partial<Artifacts.ManifestValues>;
-  interface MultiCheckAuditP3 {
-    failures: Array<string>;
-    manifestValues?: undefined;
-    allChecks?: undefined;
-  }
-
-  type MultiCheckAuditDetails = MultiCheckAuditP1 & MultiCheckAuditP2 & MultiCheckAuditP3;
 }
 
 export default Audit;

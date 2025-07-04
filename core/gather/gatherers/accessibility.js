@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* global window, document, getNodeDetails */
+/* global getNodeDetails */
 
 import BaseGatherer from '../base-gatherer.js';
 import {axeSource} from '../../lib/axe.js';
@@ -43,16 +43,15 @@ async function runA11yChecks() {
       'area-alt': {enabled: false},
       'aria-allowed-role': {enabled: true},
       'aria-braille-equivalent': {enabled: false},
-      'aria-conditional-attr': {enabled: false},
-      'aria-deprecated-role': {enabled: false},
+      'aria-conditional-attr': {enabled: true},
+      'aria-deprecated-role': {enabled: true},
       'aria-dialog-name': {enabled: true},
-      'aria-prohibited-attr': {enabled: false},
+      'aria-prohibited-attr': {enabled: true},
       'aria-roledescription': {enabled: false},
       'aria-treeitem-name': {enabled: true},
       'aria-text': {enabled: true},
       'audio-caption': {enabled: false},
       'blink': {enabled: false},
-      'duplicate-id-active': {enabled: true},
       'duplicate-id': {enabled: false},
       'empty-heading': {enabled: true},
       'frame-focusable-content': {enabled: false},
@@ -75,6 +74,8 @@ async function runA11yChecks() {
       'select-name': {enabled: true},
       'server-side-image-map': {enabled: false},
       'skip-link': {enabled: true},
+      // https://github.com/GoogleChrome/lighthouse/issues/16163
+      'summary-name': {enabled: false},
       'svg-img-alt': {enabled: false},
       'tabindex': {enabled: true},
       'table-duplicate-name': {enabled: true},

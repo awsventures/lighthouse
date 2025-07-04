@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* eslint-disable no-console */
-
 /**
  * @fileoverview - Used to manually examine the polyfills/transforms used on a page.
  *
@@ -16,7 +14,6 @@
 
 import path from 'path';
 
-// @ts-expect-error - We don't really need types for this
 import colors from 'colors';
 
 import LegacyJavascript from '../../audits/byte-efficiency/legacy-javascript.js';
@@ -30,8 +27,10 @@ async function main() {
   /** @type {LH.Artifacts} */
   const artifacts = readJson(`${LATEST_RUN_DIR}/artifacts.json`);
   const devtoolsLog = readJson(`${LATEST_RUN_DIR}/defaultPass.devtoolslog.json`);
+  const trace = readJson(`${LATEST_RUN_DIR}/defaultPass.trace.json`);
   const scripts = artifacts.Scripts;
   artifacts.devtoolsLogs = {defaultPass: devtoolsLog};
+  artifacts.traces = {defaultPass: trace};
 
   const auditResults = await LegacyJavascript.audit(artifacts, {
     computedCache: new Map(),
@@ -42,7 +41,7 @@ async function main() {
 
   const items =
     auditResults.details &&
-    auditResults.details.type === 'table' &&
+    auditResults.details.type === 'opportunity' &&
     auditResults.details.items;
 
   if (!items) {

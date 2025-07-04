@@ -31,7 +31,7 @@ class InteractionToNextPaint extends Audit {
       description: str_(UIStrings.description),
       scoreDisplayMode: Audit.SCORING_MODES.NUMERIC,
       supportedModes: ['timespan'],
-      requiredArtifacts: ['traces'],
+      requiredArtifacts: ['Trace'],
     };
   }
 
@@ -61,7 +61,7 @@ class InteractionToNextPaint extends Audit {
       return {score: null, notApplicable: true};
     }
 
-    const trace = artifacts.traces[Audit.DEFAULT_PASS];
+    const trace = artifacts.Trace;
     const metricData = {trace, settings};
     const interactionEvent = await ComputedResponsivenes.request(metricData, context);
 
@@ -70,9 +70,7 @@ class InteractionToNextPaint extends Audit {
       return {score: null, notApplicable: true};
     }
 
-    // TODO: remove workaround once 103.0.5052.0 is sufficiently released.
-    const timing = interactionEvent.name === 'FallbackTiming' ?
-        interactionEvent.duration : interactionEvent.args.data.duration;
+    const timing = interactionEvent.args.data.duration;
 
     return {
       score: Audit.computeLogNormalScore({p10: context.options.p10, median: context.options.median},

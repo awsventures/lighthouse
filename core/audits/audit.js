@@ -10,6 +10,15 @@ import {Util} from '../../shared/util.js';
 
 const DEFAULT_PASS = 'defaultPass';
 
+/** @type {Record<keyof LH.Audit.ProductMetricSavings, number>} */
+const METRIC_SAVINGS_PRECISION = {
+  FCP: 50,
+  LCP: 50,
+  INP: 50,
+  TBT: 50,
+  CLS: 0.001,
+};
+
 /**
  * @typedef TableOptions
  * @property {number=} wastedMs
@@ -40,6 +49,7 @@ class Audit {
    * @return {string}
    */
   static get DEFAULT_PASS() {
+    // TODO(v13): remove.
     return DEFAULT_PASS;
   }
 
@@ -132,6 +142,17 @@ class Audit {
   }
 
   /**
+   * @param {LH.Audit.Details.Checklist['items']} items
+   * @return {LH.Audit.Details.Checklist}
+   */
+  static makeChecklistDetails(items) {
+    return {
+      type: 'checklist',
+      items,
+    };
+  }
+
+  /**
    * @param {LH.Audit.Details.Table['headings']} headings
    * @param {LH.Audit.Details.Table['items']} results
    * @param {TableOptions=} options
@@ -143,7 +164,7 @@ class Audit {
     if (results.length === 0) {
       return {
         type: 'table',
-        headings: [],
+        headings,
         items: [],
         summary,
       };
@@ -153,7 +174,7 @@ class Audit {
 
     return {
       type: 'table',
-      headings: headings,
+      headings,
       items: results,
       summary,
       sortedBy,
@@ -170,6 +191,21 @@ class Audit {
     return {
       type: 'list',
       items: items,
+    };
+  }
+
+  /**
+   * @param {LH.IcuMessage | string=} title
+   * @param {LH.IcuMessage | string=} description
+   * @param {LH.Audit.Details.ListableDetail} value
+   * @return {LH.Audit.Details.ListSectionItem}
+   */
+  static makeListDetailSectionItem(value, title, description) {
+    return {
+      type: 'list-section',
+      title,
+      description,
+      value,
     };
   }
 
@@ -321,6 +357,10 @@ class Audit {
    * @return {number|null}
    */
   static _normalizeAuditScore(score, scoreDisplayMode, auditId) {
+    if (scoreDisplayMode === Audit.SCORING_MODES.INFORMATIVE) {
+      return 1;
+    }
+
     if (scoreDisplayMode !== Audit.SCORING_MODES.BINARY &&
         scoreDisplayMode !== Audit.SCORING_MODES.NUMERIC &&
         scoreDisplayMode !== Audit.SCORING_MODES.METRIC_SAVINGS) {
@@ -337,6 +377,34 @@ class Audit {
     score = clampTo2Decimals(score);
 
     return score;
+  }
+
+  /**
+   * @param {LH.Audit.ProductMetricSavings|undefined} metricSavings
+   * @return {LH.Audit.ProductMetricSavings|undefined}
+   */
+  static _quantizeMetricSavings(metricSavings) {
+    if (!metricSavings) return;
+
+    /** @type {LH.Audit.ProductMetricSavings} */
+    const normalizedMetricSavings = {...metricSavings};
+
+    // eslint-disable-next-line max-len
+    for (const key of /** @type {Array<keyof LH.Audit.ProductMetricSavings>} */ (Object.keys(metricSavings))) {
+      let value = metricSavings[key];
+      if (value === undefined) continue;
+
+      value = Math.max(value, 0);
+
+      const precision = METRIC_SAVINGS_PRECISION[key];
+      if (precision !== undefined) {
+        value = Math.round(value / precision) * precision;
+      }
+
+      normalizedMetricSavings[key] = value;
+    }
+
+    return normalizedMetricSavings;
   }
 
   /**
@@ -378,10 +446,13 @@ class Audit {
       scoreDisplayMode = product.scoreDisplayMode;
     }
 
+    const metricSavings = Audit._quantizeMetricSavings(product.metricSavings);
+    const hasSomeSavings = Object.values(metricSavings || {}).some(v => v);
+
     if (scoreDisplayMode === Audit.SCORING_MODES.METRIC_SAVINGS) {
       if (score && score >= Util.PASS_THRESHOLD) {
         score = 1;
-      } else if (Object.values(product.metricSavings || {}).some(v => v)) {
+      } else if (hasSomeSavings) {
         score = 0;
       } else {
         score = 0.5;
@@ -419,10 +490,11 @@ class Audit {
       errorStack: product.errorStack,
       warnings: product.warnings,
       scoringOptions: product.scoringOptions,
-      metricSavings: product.metricSavings,
+      metricSavings,
 
       details: product.details,
       guidanceLevel: audit.meta.guidanceLevel,
+      replacesAudits: audit.meta.replacesAudits,
     };
   }
 
@@ -432,10 +504,12 @@ class Audit {
    * @returns {LH.Artifacts.MetricComputationDataInput}
    */
   static makeMetricComputationDataInput(artifacts, context) {
-    const trace = artifacts.traces[Audit.DEFAULT_PASS];
-    const devtoolsLog = artifacts.devtoolsLogs[Audit.DEFAULT_PASS];
+    const trace = artifacts.Trace ?? artifacts.traces[Audit.DEFAULT_PASS];
+    const devtoolsLog = artifacts.DevtoolsLog ?? artifacts.devtoolsLogs[Audit.DEFAULT_PASS];
     const gatherContext = artifacts.GatherContext;
-    return {trace, devtoolsLog, gatherContext, settings: context.settings, URL: artifacts.URL};
+    const {URL, SourceMaps} = artifacts;
+    // eslint-disable-next-line max-len
+    return {trace, devtoolsLog, gatherContext, settings: context.settings, URL, SourceMaps, simulator: null};
   }
 }
 

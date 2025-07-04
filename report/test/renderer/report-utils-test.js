@@ -132,7 +132,7 @@ describe('util helpers', () => {
       const auditsWithUrls = auditsWithTableDetails.filter(audit => {
         if (auditsThatDontHaveUrls.includes(audit.id)) return false;
         const urlFields = ['url', 'source-location'];
-        return audit.details.headings.some(heading =>
+        return audit.details.items.length && audit.details.headings.some(heading =>
           urlFields.includes(heading.valueType) ||
           urlFields.includes(heading.subItemsHeading?.valueType)
         );
@@ -145,6 +145,26 @@ describe('util helpers', () => {
       for (const id of auditsWithUrls) {
         const foundEntities = preparedResult.audits[id].details.items.some(item => item.entity);
         assert.equal(foundEntities, true);
+      }
+    });
+
+    it('identifies relevant metrics via metric savings', () => {
+      const clonedSampleResult = JSON.parse(JSON.stringify(sampleResult));
+
+      const auditsWithMetricSavings = Object.values(clonedSampleResult.audits)
+        .filter(audit => audit.metricSavings)
+        .map(audit => audit.id);
+      assert.notEqual(auditsWithMetricSavings.length, 0);
+
+      const preparedResult = ReportUtils.prepareReportResult(clonedSampleResult);
+
+      // ensure each audit that had urls detected to have marked entities.
+      for (const auditRef of preparedResult.categories['performance'].auditRefs) {
+        const metricSavingsKeys = Object.keys(auditRef.result.metricSavings || {})
+          // INP is not on navigation reports, so its expected to be missing
+          .filter(key => key !== 'INP');
+        const relevantMetricKeys = auditRef.relevantMetrics?.map(a => a.acronym) || [];
+        assert.deepStrictEqual(metricSavingsKeys.sort(), relevantMetricKeys.sort());
       }
     });
   });

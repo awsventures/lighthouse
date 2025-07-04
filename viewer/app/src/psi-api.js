@@ -13,7 +13,6 @@ const PSI_DEFAULT_CATEGORIES = [
   'accessibility',
   'seo',
   'best-practices',
-  'pwa',
 ];
 
 /**
@@ -35,7 +34,6 @@ class PSIApi {
    */
   fetchPSI(params) {
     const apiUrl = new URL(PSI_URL);
-    // eslint-disable-next-line prefer-const
     for (let [name, value] of Object.entries(params)) {
       if (Array.isArray(value)) continue;
       if (name === 'strategy') value = value || 'mobile';
@@ -45,7 +43,11 @@ class PSIApi {
       apiUrl.searchParams.append('category', singleCategory);
     }
     apiUrl.searchParams.append('key', PSI_KEY);
-    return fetch(apiUrl.href).then(res => res.json());
+    return fetch(apiUrl.href, {
+      headers: {
+        referer: 'googlechrome.github.io',
+      },
+    }).then(res => res.json());
   }
 }
 

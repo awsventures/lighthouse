@@ -123,7 +123,6 @@ async function runForWpt(url) {
 
   // Poll for the results every x seconds, where x = position in queue.
   let lhr;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const responseJson = await fetchString(jsonUrl);
     const response = JSON.parse(responseJson);
@@ -192,7 +191,6 @@ function assertLhr(lhr) {
   if (lhr.runtimeError) throw new Error(`runtime error: ${lhr.runtimeError}`);
   const metrics = common.getMetrics(lhr);
   if (metrics?.firstContentfulPaint &&
-      metrics.firstMeaningfulPaint &&
       metrics.interactive &&
       // WPT won't have this, we'll just get from the trace.
       // metrics.largestContentfulPaint &&
@@ -228,7 +226,6 @@ async function main() {
     let unthrottledDone = false;
 
     // The closure this makes is too convenient to decompose.
-    // eslint-disable-next-line no-inner-declarations
     function updateProgress() {
       const index = TEST_URLS.indexOf(url);
       log.progress([

@@ -7,7 +7,7 @@
 import {ByteEfficiencyAudit} from './byte-efficiency-audit.js';
 import * as i18n from '../../lib/i18n/i18n.js';
 import {computeJSTokenLength as computeTokenLength} from '../../lib/minification-estimator.js';
-import {getRequestForScript, isInline} from '../../lib/script-helpers.js';
+import {estimateCompressedContentSize, getRequestForScript, isInline} from '../../lib/script-helpers.js';
 import {Util} from '../../../shared/util.js';
 
 const UIStrings = {
@@ -44,7 +44,8 @@ class UnminifiedJavaScript extends ByteEfficiencyAudit {
       description: str_(UIStrings.description),
       scoreDisplayMode: ByteEfficiencyAudit.SCORING_MODES.METRIC_SAVINGS,
       guidanceLevel: 3,
-      requiredArtifacts: ['Scripts', 'devtoolsLogs', 'traces', 'GatherContext', 'URL'],
+      requiredArtifacts: ['Scripts', 'DevtoolsLog', 'Trace', 'GatherContext', 'URL',
+        'SourceMaps'],
     };
   }
 
@@ -58,8 +59,7 @@ class UnminifiedJavaScript extends ByteEfficiencyAudit {
     const contentLength = scriptContent.length;
     const totalTokenLength = computeTokenLength(scriptContent);
 
-    const totalBytes = ByteEfficiencyAudit.estimateTransferSize(networkRecord, contentLength,
-      'Script');
+    const totalBytes = estimateCompressedContentSize(networkRecord, contentLength, 'Script');
     const wastedRatio = 1 - totalTokenLength / contentLength;
     const wastedBytes = Math.round(totalBytes * wastedRatio);
 

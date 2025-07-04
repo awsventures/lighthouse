@@ -5,20 +5,14 @@
  */
 
 import {Audit} from '../audit.js';
-import {LanternInteractive} from '../../computed/metrics/lantern-interactive.js';
 import * as i18n from '../../lib/i18n/i18n.js';
 import {NetworkRecords} from '../../computed/network-records.js';
 import {LoadSimulator} from '../../computed/load-simulator.js';
-import {PageDependencyGraph} from '../../computed/page-dependency-graph.js';
-import {LanternLargestContentfulPaint} from '../../computed/metrics/lantern-largest-contentful-paint.js';
-import {LanternFirstContentfulPaint} from '../../computed/metrics/lantern-first-contentful-paint.js';
+import {LanternLargestContentfulPaint as LanternLCP} from '../../computed/metrics/lantern-largest-contentful-paint.js';
+import {LanternFirstContentfulPaint as LanternFCP} from '../../computed/metrics/lantern-first-contentful-paint.js';
 import {LCPImageRecord} from '../../computed/lcp-image-record.js';
-import {NetworkRequest} from '../../lib/network-request.js';
 
 const str_ = i18n.createIcuMessageFn(import.meta.url, {});
-
-/** @typedef {import('../../lib/dependency-graph/simulator/simulator').Simulator} Simulator */
-/** @typedef {import('../../lib/dependency-graph/base-node.js').Node} Node */
 
 // Parameters for log-normal distribution scoring. These values were determined by fitting the
 // log-normal cumulative distribution function curve to the former method of linear interpolation
@@ -60,114 +54,13 @@ class ByteEfficiencyAudit extends Audit {
   }
 
   /**
-   * Estimates the number of bytes this network record would have consumed on the network based on the
-   * uncompressed size (totalBytes). Uses the actual transfer size from the network record if applicable.
-   *
-   * @param {LH.Artifacts.NetworkRequest|undefined} networkRecord
-   * @param {number} totalBytes Uncompressed size of the resource
-   * @param {LH.Crdp.Network.ResourceType=} resourceType
-   * @return {number}
-   */
-  static estimateTransferSize(networkRecord, totalBytes, resourceType) {
-    if (!networkRecord) {
-      // We don't know how many bytes this asset used on the network, but we can guess it was
-      // roughly the size of the content gzipped.
-      // See https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/optimize-encoding-and-transfer for specific CSS/Script examples
-      // See https://discuss.httparchive.org/t/file-size-and-compression-savings/145 for fallback multipliers
-      switch (resourceType) {
-        case 'Stylesheet':
-          // Stylesheets tend to compress extremely well.
-          return Math.round(totalBytes * 0.2);
-        case 'Script':
-        case 'Document':
-          // Scripts and HTML compress fairly well too.
-          return Math.round(totalBytes * 0.33);
-        default:
-          // Otherwise we'll just fallback to the average savings in HTTPArchive
-          return Math.round(totalBytes * 0.5);
-      }
-    } else if (networkRecord.resourceType === resourceType) {
-      // This was a regular standalone asset, just use the transfer size.
-      return networkRecord.transferSize || 0;
-    } else {
-      // This was an asset that was inlined in a different resource type (e.g. HTML document).
-      // Use the compression ratio of the resource to estimate the total transferred bytes.
-      const transferSize = networkRecord.transferSize || 0;
-      const resourceSize = networkRecord.resourceSize || 0;
-      // Get the compression ratio, if it's an invalid number, assume no compression.
-      const compressionRatio = Number.isFinite(resourceSize) && resourceSize > 0 ?
-        (transferSize / resourceSize) : 1;
-      return Math.round(totalBytes * compressionRatio);
-    }
-  }
-
-  /**
-   * Estimates the number of bytes the content of this network record would have consumed on the network based on the
-   * uncompressed size (totalBytes). Uses the actual transfer size from the network record if applicable,
-   * minus the size of the response headers.
-   *
-   * This differs from `estimateTransferSize` only in that is subtracts the response headers from the estimate.
-   *
-   * @param {LH.Artifacts.NetworkRequest|undefined} networkRecord
-   * @param {number} totalBytes Uncompressed size of the resource
-   * @param {LH.Crdp.Network.ResourceType=} resourceType
-   * @return {number}
-   */
-  static estimateCompressedContentSize(networkRecord, totalBytes, resourceType) {
-    if (!networkRecord) {
-      // We don't know how many bytes this asset used on the network, but we can guess it was
-      // roughly the size of the content gzipped.
-      // See https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/optimize-encoding-and-transfer for specific CSS/Script examples
-      // See https://discuss.httparchive.org/t/file-size-and-compression-savings/145 for fallback multipliers
-      switch (resourceType) {
-        case 'Stylesheet':
-          // Stylesheets tend to compress extremely well.
-          return Math.round(totalBytes * 0.2);
-        case 'Script':
-        case 'Document':
-          // Scripts and HTML compress fairly well too.
-          return Math.round(totalBytes * 0.33);
-        default:
-          // Otherwise we'll just fallback to the average savings in HTTPArchive
-          return Math.round(totalBytes * 0.5);
-      }
-    }
-
-    // Get the size of the response body on the network.
-    let contentTransferSize = networkRecord.transferSize || 0;
-    if (!NetworkRequest.isContentEncoded(networkRecord)) {
-      // This is not encoded, so we can use resourceSize directly.
-      // This would be equivalent to transfer size minus headers transfer size, but transfer size
-      // may also include bytes for SSL connection etc.
-      contentTransferSize = networkRecord.resourceSize;
-    } else if (networkRecord.responseHeadersTransferSize) {
-      // Subtract the size of the encoded headers.
-      contentTransferSize =
-        Math.max(0, contentTransferSize - networkRecord.responseHeadersTransferSize);
-    }
-
-    if (networkRecord.resourceType === resourceType) {
-      // This was a regular standalone asset, just use the transfer size.
-      return contentTransferSize;
-    } else {
-      // This was an asset that was inlined in a different resource type (e.g. HTML document).
-      // Use the compression ratio of the resource to estimate the total transferred bytes.
-      const resourceSize = networkRecord.resourceSize || 0;
-      // Get the compression ratio, if it's an invalid number, assume no compression.
-      const compressionRatio = Number.isFinite(resourceSize) && resourceSize > 0 ?
-        (contentTransferSize / resourceSize) : 1;
-      return Math.round(totalBytes * compressionRatio);
-    }
-  }
-
-  /**
    * @param {LH.Artifacts} artifacts
    * @param {LH.Audit.Context} context
    * @return {Promise<LH.Audit.Product>}
    */
   static async audit(artifacts, context) {
     const gatherContext = artifacts.GatherContext;
-    const devtoolsLog = artifacts.devtoolsLogs[Audit.DEFAULT_PASS];
+    const devtoolsLog = artifacts.DevtoolsLog;
     const settings = context?.settings || {};
     const simulatorOptions = {
       devtoolsLog,
@@ -200,8 +93,8 @@ class ByteEfficiencyAudit extends Audit {
    * Computes the estimated effect of all the byte savings on the provided graph.
    *
    * @param {Array<LH.Audit.ByteEfficiencyItem>} results The array of byte savings results per resource
-   * @param {Node} graph
-   * @param {Simulator} simulator
+   * @param {LH.Gatherer.Simulation.GraphNode} graph
+   * @param {LH.Gatherer.Simulation.Simulator} simulator
    * @param {{label?: string, providedWastedBytesByUrl?: Map<string, number>}=} options
    * @return {{savings: number, simulationBeforeChanges: LH.Gatherer.Simulation.Result, simulationAfterChanges: LH.Gatherer.Simulation.Result}}
    */
@@ -224,13 +117,13 @@ class ByteEfficiencyAudit extends Audit {
     const originalTransferSizes = new Map();
     graph.traverse(node => {
       if (node.type !== 'network') return;
-      const wastedBytes = wastedBytesByUrl.get(node.record.url);
+      const wastedBytes = wastedBytesByUrl.get(node.request.url);
       if (!wastedBytes) return;
 
-      const original = node.record.transferSize;
-      originalTransferSizes.set(node.record.requestId, original);
+      const original = node.request.transferSize;
+      originalTransferSizes.set(node.request.requestId, original);
 
-      node.record.transferSize = Math.max(original - wastedBytes, 0);
+      node.request.transferSize = Math.max(original - wastedBytes, 0);
     });
 
     const simulationAfterChanges = simulator.simulate(graph, {label: afterLabel});
@@ -238,9 +131,9 @@ class ByteEfficiencyAudit extends Audit {
     // Restore the original transfer size after we've done our simulation
     graph.traverse(node => {
       if (node.type !== 'network') return;
-      const originalTransferSize = originalTransferSizes.get(node.record.requestId);
+      const originalTransferSize = originalTransferSizes.get(node.request.requestId);
       if (originalTransferSize === undefined) return;
-      node.record.transferSize = originalTransferSize;
+      node.request.transferSize = originalTransferSize;
     });
 
     const savings = simulationBeforeChanges.timeInMs - simulationAfterChanges.timeInMs;
@@ -254,39 +147,8 @@ class ByteEfficiencyAudit extends Audit {
   }
 
   /**
-   * Computes the estimated effect of all the byte savings on the maximum of the following:
-   *
-   * - end time of the last long task in the provided graph
-   * - (if includeLoad is true or not provided) end time of the last node in the graph
-   *
-   * @param {Array<LH.Audit.ByteEfficiencyItem>} results The array of byte savings results per resource
-   * @param {Node} graph
-   * @param {Simulator} simulator
-   * @param {{includeLoad?: boolean, providedWastedBytesByUrl?: Map<string, number>}=} options
-   * @return {number}
-   */
-  static computeWasteWithTTIGraph(results, graph, simulator, options) {
-    options = Object.assign({includeLoad: true}, options);
-    const {savings: savingsOnOverallLoad, simulationBeforeChanges, simulationAfterChanges} =
-      this.computeWasteWithGraph(results, graph, simulator, {
-        ...options,
-        label: 'overallLoad',
-      });
-
-    const savingsOnTTI =
-      LanternInteractive.getLastLongTaskEndTime(simulationBeforeChanges.nodeTimings) -
-      LanternInteractive.getLastLongTaskEndTime(simulationAfterChanges.nodeTimings);
-
-    let savings = savingsOnTTI;
-    if (options.includeLoad) savings = Math.max(savings, savingsOnOverallLoad);
-
-    // Round waste to nearest 10ms
-    return Math.round(Math.max(savings, 0) / 10) * 10;
-  }
-
-  /**
    * @param {ByteEfficiencyProduct} result
-   * @param {Simulator} simulator
+   * @param {LH.Gatherer.Simulation.Simulator} simulator
    * @param {LH.Artifacts.MetricComputationDataInput} metricComputationInput
    * @param {LH.Audit.Context} context
    * @return {Promise<LH.Audit.Product>}
@@ -296,7 +158,7 @@ class ByteEfficiencyAudit extends Audit {
 
     const wastedBytes = results.reduce((sum, item) => sum + item.wastedBytes, 0);
 
-    /** @type {LH.Audit.MetricSavings} */
+    /** @type {LH.Audit.ProductMetricSavings} */
     const metricSavings = {
       FCP: 0,
       LCP: 0,
@@ -306,30 +168,25 @@ class ByteEfficiencyAudit extends Audit {
     // This is useful information in the LHR and should be preserved.
     let wastedMs;
     if (metricComputationInput.gatherContext.gatherMode === 'navigation') {
-      const graph = await PageDependencyGraph.request(metricComputationInput, context);
-      const {
-        pessimisticGraph: pessimisticFCPGraph,
-      } = await LanternFirstContentfulPaint.request(metricComputationInput, context);
-      const {
-        pessimisticGraph: pessimisticLCPGraph,
-      } = await LanternLargestContentfulPaint.request(metricComputationInput, context);
-
-      wastedMs = this.computeWasteWithTTIGraph(results, graph, simulator, {
-        providedWastedBytesByUrl: result.wastedBytesByUrl,
-      });
+      const optimisticFCPGraph = (await LanternFCP.request(metricComputationInput, context))
+        .optimisticGraph;
+      const optimisticLCPGraph = (await LanternLCP.request(metricComputationInput, context))
+        .optimisticGraph;
 
       const {savings: fcpSavings} = this.computeWasteWithGraph(
         results,
-        pessimisticFCPGraph,
+        optimisticFCPGraph,
         simulator,
         {providedWastedBytesByUrl: result.wastedBytesByUrl, label: 'fcp'}
       );
+      // Note: LCP's optimistic graph sometimes unexpectedly yields higher savings than the pessimistic graph.
       const {savings: lcpGraphSavings} = this.computeWasteWithGraph(
         results,
-        pessimisticLCPGraph,
+        optimisticLCPGraph,
         simulator,
         {providedWastedBytesByUrl: result.wastedBytesByUrl, label: 'lcp'}
       );
+
 
       // The LCP graph can underestimate the LCP savings if there is potential savings on the LCP record itself.
       let lcpRecordSavings = 0;
@@ -343,6 +200,7 @@ class ByteEfficiencyAudit extends Audit {
 
       metricSavings.FCP = fcpSavings;
       metricSavings.LCP = Math.max(lcpGraphSavings, lcpRecordSavings);
+      wastedMs = metricSavings.LCP;
     } else {
       wastedMs = simulator.computeWastedMsFromWastedBytes(wastedBytes);
     }

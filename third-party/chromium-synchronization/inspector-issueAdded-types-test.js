@@ -41,6 +41,7 @@ Array [
   "cookieIssueDetails",
   "corsIssueDetails",
   "deprecationIssueDetails",
+  "elementAccessibilityIssueDetails",
   "federatedAuthRequestIssueDetails",
   "federatedAuthUserInfoRequestIssueDetails",
   "genericIssueDetails",
@@ -48,10 +49,14 @@ Array [
   "lowTextContrastIssueDetails",
   "mixedContentIssueDetails",
   "navigatorUserAgentIssueDetails",
+  "partitioningBlobURLIssueDetails",
   "propertyRuleIssueDetails",
   "quirksModeIssueDetails",
   "sharedArrayBufferIssueDetails",
+  "sharedDictionaryIssueDetails",
+  "sriMessageSignatureIssueDetails",
   "stylesheetLoadingIssueDetails",
+  "userReidentificationIssueDetails",
 ]
 `);
   });

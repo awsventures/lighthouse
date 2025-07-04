@@ -181,12 +181,12 @@ class Interactive extends NavigationMetric {
 
 const InteractiveComputed = makeComputedArtifact(
   Interactive,
-  ['devtoolsLog', 'gatherContext', 'settings', 'simulator', 'trace', 'URL']
+  ['devtoolsLog', 'gatherContext', 'settings', 'simulator', 'trace', 'URL', 'SourceMaps']
 );
 export {InteractiveComputed as Interactive};
 
 /**
  * @typedef TimePeriod
- * @property {number} start
- * @property {number} end
+ * @property {number} start In ms.
+ * @property {number} end In ms.
  */

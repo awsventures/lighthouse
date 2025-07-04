@@ -24,14 +24,13 @@ function getTextEncodingCode() {
 }
 
 describe('Lighthouse Treemap', () => {
-  // eslint-disable-next-line no-console
   console.log('\n✨ Be sure to have recently run this: yarn build-treemap');
 
   /** @type {import('puppeteer').Browser} */
   let browser;
   /** @type {import('puppeteer').Page} */
   let page;
-  /** @type {Error[]} */
+  /** @type {Array<string|Promise<string>>} */
   let pageErrors = [];
 
   let server;
@@ -50,21 +49,49 @@ describe('Lighthouse Treemap', () => {
   beforeEach(async () => {
     if (!browser) {
       browser = await puppeteer.launch({
-        headless: 'new',
+        headless: process.env.DEBUG ? false : 'new',
         executablePath: getChromePath(),
       });
     }
     page = await browser.newPage();
-    page.on('pageerror', pageError => pageErrors.push(pageError));
+    page.on('pageerror', e => pageErrors.push(`${e.message} ${e.stack}`));
+    page.on('console', (e) => {
+      if (e.type() === 'error' || e.type() === 'warning') {
+        const describe = (jsHandle) => {
+          return jsHandle.executionContext().evaluate((obj) => {
+            return JSON.stringify(obj, null, 2);
+          }, jsHandle);
+        };
+        const promise = Promise.all(e.args().map(describe)).then(args => {
+          return `${e.text()} ${args.join(' ')} ${JSON.stringify(e.location(), null, 2)}`;
+        });
+        pageErrors.push(promise);
+      }
+    });
   });
 
-  afterEach(async () => {
-    await page.close();
-
-    // Fails if any unexpected errors ocurred.
-    // If a test expects an error, it will clear this array.
-    expect(pageErrors).toMatchObject([]);
+  async function claimErrors() {
+    const theErrors = pageErrors;
     pageErrors = [];
+    return await Promise.all(theErrors);
+  }
+
+  async function ensureNoErrors() {
+    await page.bringToFront();
+    await page.evaluate(() => new Promise(window.requestAnimationFrame));
+    const errors = (await claimErrors()).filter(error => {
+      // Filters out a cookie deprecation error that only occurs on ToT
+      // This error comes from gtag.js
+      // https://support.google.com/tagmanager/thread/288419928/error-failed-to-execute-getvalue-on-cookiedeprecationlabel?hl=en
+      return !error.match(
+        /Failed to execute 'getValue' on 'CookieDeprecationLabel': Illegal invocation/);
+    });
+    expect(errors).toHaveLength(0);
+  }
+
+  afterEach(async () => {
+    await ensureNoErrors();
+    await page.close();
   });
 
   describe('Recieves options', () => {
@@ -149,7 +176,7 @@ describe('Lighthouse Treemap', () => {
         timeout: 30000,
       });
 
-      await page.click('#view-mode--unused-bytes');
+      await page.select('.view-mode-selector', '1'); // unused bytes
       await page.waitForSelector('.lh-treemap--view-mode--unused-bytes');
 
       // Identify the JS data.
