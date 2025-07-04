@@ -132,7 +132,7 @@ message LighthouseResult {
   map<string, CategoryGroup> category_groups = 11;
 
   // Message containing the configuration settings for the LH run
-  // Next ID: 34
+  // Next ID: 33
   message ConfigSettings {
     // The possible form factors an audit can be run in.
     // This enum served the emulated_form_factor field, but in v7, that field
@@ -288,17 +288,14 @@ message LighthouseResult {
     // https://chromedevtools.github.io/debugger-protocol-viewer/tot/Storage/#type-StorageType
     repeated string clear_storage_types = 29;
 
-    // Disables failing on 404 status code, and instead issues a warning
-    bool ignoreStatusCode = 30 [json_name="ignoreStatusCodeLegacy"];
-
     // List of extra HTTP Headers to include
-    map<string, string> extra_headers = 31;
+    map<string, string> extra_headers = 30;
 
     // The budget.json object for LightWallet
-    repeated google.protobuf.Struct budgets = 32 [deprecated = true];
+    repeated google.protobuf.Struct budgets = 31 [deprecated = true];
 
     // Precomputed lantern estimates to use instead of observed analysis.
-    google.protobuf.Struct precomputed_lantern_data = 33;
+    google.protobuf.Struct precomputed_lantern_data = 32;
   }
 
   // The settings that were used to run this audit
