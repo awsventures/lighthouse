@@ -50,14 +50,14 @@ npm install -g lighthouse
 # Example: audit your homepage
 lighthouse https://awsventures.com/ \
           --output json --output html \
-          --output-path ./reports/awsventures-20250713.html \
+          --output-path ./report/awsventures-20250713.html \
           --preset=desktop
 ```
 
 **What this command does:**
 - Runs Chrome headless to capture performance, accessibility, SEO & best-practice scores
 - Outputs both HTML (human-readable) and JSON (machine-readable) formats
-- Saves reports to `./reports/` for easy comparison later
+- Saves reports to `./report/` for easy comparison later
 
 > **Tip**: Test multiple pages by creating a bash wrapper or using [Lighthouse-CI](https://github.com/GoogleChrome/lighthouse-ci) to loop through URL lists.
 
@@ -65,7 +65,7 @@ lighthouse https://awsventures.com/ \
 
 ```bash
 mkdir -p docs/baseline-20250713
-mv reports/* docs/baseline-20250713/
+mv report/* docs/baseline-20250713/
 git add docs/baseline-20250713
 git commit -m "Baseline Lighthouse scores for 2025-07-13"
 git push -u origin baseline-20250713
@@ -133,7 +133,7 @@ Either manually or let the CI job handle it automatically.
 
 ```bash
 mkdir -p docs/after-optimize-images-20250714
-# Move new reports to this folder
+# Move new report files to this folder
 git add docs/after-optimize-images-20250714
 git commit -m "perf: optimize images with EWWW compression"
 git push -u origin optimize-images
