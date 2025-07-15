@@ -1,36 +1,25 @@
-https://awsventures.com/opt-out-preferences/#cmplz-manage-consent-container
-https://awsventures.com/opt-out-preferences/#cmplz-cookies-overview
-https://awsventures.com/opt-out-preferences/#cmplz-tcf-wrapper
-https://cookiedatabase.org/tcf/purposes/
-https://awsventures.com/opt-out-preferences/#cmplz-manage-consent-container
-https://awsventures.com/opt-out-preferences/
-https://awsventures.com/privacy-policy/
-https://awsventures.com/#
-https://awsventures.com/
+# AWS Ventures Website Pages for Lighthouse Testing
+# Updated: July 14, 2025
+# Instructions: Add one URL per line, remove duplicates and external links
+
+# Core Pages
 https://awsventures.com/
 https://awsventures.com/company/
 https://awsventures.com/services/
 https://awsventures.com/process/
 https://awsventures.com/contact/
-https://awsventures.com/#
-https://awsventures.com/#
-https://awsventures.com/#
-https://www.facebook.com/
-https://www.instagram.com/
-http://www.twitter.com/
-tel:7732199551
-mailto:contact@awsventures.com
-mailto:contact@awsventures.com
-https://awsventures.com/company/
-https://awsventures.com/services/
-https://awsventures.com/process/
-https://awsventures.com/contact/
-tel:7732199551
-tel:7732199551
-mailto:contact@awsventures.com
-mailto:contact@awsventures.com
+
+# Legal Pages
 https://awsventures.com/privacy-policy/
 https://awsventures.com/term_conditions/
 https://awsventures.com/copyright/
 https://awsventures.com/opt-out-preferences/
+
+# Notes:
+# - Removed duplicate URLs
+# - Removed external links (Facebook, Instagram, Twitter)
+# - Removed non-web URLs (tel:, mailto:)
+# - Removed fragment-only URLs (/#)
+# - Kept only testable AWS Ventures pages
+# - Ready for batch-lighthouse-audit.sh script
 
